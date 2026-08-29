@@ -24,6 +24,7 @@ const DEPRECATION_IDS = [
     "gtkx-v2-inout-returns",
     "gtkx-v2-resource-imports",
     "gtkx-v2-default-libraries",
+    "gtkx-v2-tree-shaking",
 ] as const;
 
 const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
@@ -59,6 +60,13 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         flag: "v2DefaultLibraries",
         change: "Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it.",
         unchecked: NOTHING_REPORTS,
+    },
+    {
+        id: "gtkx-v2-tree-shaking",
+        flag: "v2TreeShaking",
+        change:
+            "The stores register every class eagerly. " +
+            "In 2.0 each class registers itself and unused ones drop from bundles.",
     },
 ];
 

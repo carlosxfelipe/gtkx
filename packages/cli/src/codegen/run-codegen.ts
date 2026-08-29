@@ -104,6 +104,7 @@ const codegenOptions = ({ store, libraries, girPath, elements, future }: Codegen
     isValueUnwrapped: future.isValueUnwrapped,
     isFinishTrimmed: future.isFinishTrimmed,
     isInoutInPlace: future.isInoutInPlace,
+    isTreeShaken: future.isTreeShaken,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,

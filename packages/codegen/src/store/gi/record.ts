@@ -5,6 +5,7 @@ import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
+import { declareFoldedClass, localClassName } from "./folded.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
@@ -12,8 +13,51 @@ import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
+type FoldedRecordOptions = {
+    record: GirRecord;
+    className: string;
+    doc: string;
+    modifier: string;
+    heritage: string;
+    body: string;
+    gtypeExpr: string;
+};
+
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
+
+const recordHeritage = (context: ModuleContext, isErrorSubclass: boolean): string => {
+    if (!isErrorSubclass) {
+        return "";
+    }
+
+    const base = context.isTreeShaken ? context.hoistBaseRef("globalThis.Error") : "globalThis.Error";
+
+    return ` extends ${base}`;
+};
+
+const recordModifier = (isConstructible: boolean): string => (isConstructible ? "" : "abstract ");
+
+const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOptions): void => {
+    const { record, className, doc, modifier, heritage, body, gtypeExpr } = options;
+    const localName = localClassName(className);
+    context.beginRegistrations();
+
+    appendWrapperClassRegistration(context, {
+        className: localName,
+        gtypeExpr,
+    });
+
+    declareFoldedClass({
+        context,
+        className,
+        doc,
+        owner: record.name,
+        localDeclaration: `${modifier}class ${localName}${heritage} {\n${body}\n}`,
+        registrations: context.takeRegistrations(),
+        hasInstanceInterface: true,
+    });
+};
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     if (!isEmittableEntity(record)) {
@@ -32,16 +76,26 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     generateBindings(context, callables);
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
-    const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
+    const heritage = recordHeritage(context, isErrorSubclass);
     const doc = getDoc(record);
     const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
-    const modifier = isConstructible ? "" : "abstract ";
+    const modifier = recordModifier(isConstructible);
+    const gtypeExpr = renderSourceGtype(context, record);
 
-    context.declare({
-        name: className,
-        code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
-        owner: record.name,
-    });
+    if (gtypeExpr !== undefined && context.isTreeShaken) {
+        declareFoldedRecord(context, { record, className, doc, modifier, heritage, body, gtypeExpr });
+    } else {
+        context.declare({
+            name: className,
+            code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
+            owner: record.name,
+        });
+
+        appendWrapperClassRegistration(context, {
+            className,
+            gtypeExpr,
+        });
+    }
 
     if (isConstructible) {
         context.declare({
@@ -49,13 +103,6 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
             code: renderRecordConstructorPropsInterface(context, record, className),
         });
     }
-
-    const gtypeExpr = renderSourceGtype(context, record);
-
-    appendWrapperClassRegistration(context, {
-        className,
-        gtypeExpr,
-    });
 };
 
 const renderRecordMembers = (

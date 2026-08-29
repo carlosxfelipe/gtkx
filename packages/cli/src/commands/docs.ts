@@ -75,6 +75,7 @@ const docs = defineCommand({
             isValueUnwrapped: future.isValueUnwrapped,
             isFinishTrimmed: future.isFinishTrimmed,
             isInoutInPlace: future.isInoutInPlace,
+            isTreeShaken: future.isTreeShaken,
         });
 
         if (!isRegenerated) {

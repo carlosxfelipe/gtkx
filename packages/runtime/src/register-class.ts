@@ -45,6 +45,7 @@ import {
     TYPE_NONE,
     type TypedClass,
     typeFundamental,
+    typeInterfacePrerequisites,
     typeInterfaces,
     typeIsA,
     typeName,
@@ -381,6 +382,7 @@ const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
 ];
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
+const VFUNC_METHOD_PATTERN = /^vfunc[A-Z0-9]/;
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 const UPPER_CASE_PATTERN = /[A-Z]/;
 const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
@@ -456,6 +458,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const name = resolveTypeName(klass, options);
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
+    assertInterfacePrerequisites(klass, parentType, declaredTypes);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
     const signals = resolveDeclaredSignals(klass, options.signals ?? {});
@@ -471,6 +474,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
+    assertClaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
 
     const nativeOptions = withNativeSignals(
         toNativeOptions(classVfuncs, interfaceBindings, properties, options),
@@ -675,6 +679,61 @@ function wrapVfunc(
         { argDescriptors, returnDescriptor: descriptor.returnDescriptor },
         "vfunc",
     );
+}
+
+const claimedVfuncNames = (
+    claimedMethodNames: Set<string>,
+    interfaceBindings: InterfaceVfuncBinding[],
+): Set<string> => {
+    const claimed = new Set(claimedMethodNames);
+
+    for (const binding of interfaceBindings) {
+        for (const vfunc of binding.vfuncs) {
+            claimed.add(vfunc.methodName);
+        }
+    }
+
+    return claimed;
+};
+
+const isPrerequisiteMet = (parentType: bigint, declaredTypes: bigint[], prerequisite: bigint): boolean =>
+    typeIsA(parentType, prerequisite) || declaredTypes.includes(prerequisite);
+
+function assertPrerequisitesFor(klass: AnyClass, parentType: bigint, declaredTypes: bigint[], iface: bigint): void {
+    for (const prerequisite of typeInterfacePrerequisites(iface)) {
+        if (!isPrerequisiteMet(parentType, declaredTypes, prerequisite)) {
+            throw new TypeError(
+                `registerClass: ${klass.name} does not meet prerequisite ` +
+                `'${typeName(prerequisite) ?? String(prerequisite)}' of interface ` +
+                `'${typeName(iface) ?? String(iface)}'`,
+            );
+        }
+    }
+}
+
+function assertInterfacePrerequisites(klass: AnyClass, parentType: bigint, declaredTypes: bigint[]): void {
+    for (const iface of declaredTypes) {
+        assertPrerequisitesFor(klass, parentType, declaredTypes, iface);
+    }
+}
+
+function assertClaimedVfuncs(
+    klass: AnyClass,
+    methods: MethodTable,
+    claimedMethodNames: Set<string>,
+    interfaceBindings: InterfaceVfuncBinding[],
+): void {
+    const claimed = claimedVfuncNames(claimedMethodNames, interfaceBindings);
+
+    for (const methodName of methods.keys()) {
+        if (VFUNC_METHOD_PATTERN.test(methodName) && !claimed.has(methodName)) {
+            throw new Error(
+                `registerClass: ${klass.name}.${methodName} matches no vtable slot on any ancestor ` +
+                "or implemented interface, so the override would never be called; check the name against " +
+                "the parent class's virtual methods",
+            );
+        }
+    }
 }
 
 function discoverInterfaceBindings(

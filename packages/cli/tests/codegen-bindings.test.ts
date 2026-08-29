@@ -23,6 +23,7 @@ import {
     omittedMentions,
     POINTER_ARRAY_FIELDS,
     POINTER_ARRAY_GETTER,
+    PURE,
     RECORD_FIELD_ACCESSORS,
 } from "./codegen-helpers.js";
 
@@ -50,6 +51,10 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         try {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
+
+            expect(generatedModule(project, "gi", "digitname", "digitname.js")).toContain(
+                `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
+            );
         } finally {
             removeCliProject(project);
         }
@@ -80,7 +85,8 @@ describe("gtkx codegen (where the documentation goes)", () => {
         expect(state.status).toBe(0);
         const declared = generatedModule(state.project, store, `${stem}.d.ts`);
         expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
-        expect(generatedModule(state.project, store, `${stem}.js`)).not.toMatch(COMMENT);
+        const emitted = generatedModule(state.project, store, `${stem}.js`).split(PURE).join("");
+        expect(emitted).not.toMatch(COMMENT);
     });
 
     it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc }) => {

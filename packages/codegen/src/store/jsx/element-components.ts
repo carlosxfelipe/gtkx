@@ -1,8 +1,9 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
+import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { getDoc } from "../gi/doc-spec.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
@@ -22,6 +23,13 @@ type CandidateExportOptions = {
     intrinsicElements: GlibNamedClass[];
     components: Record<string, ElementComponent>;
 };
+
+type LazyMetadataOptions = {
+    isTreeShaken: boolean;
+    intrinsicNames: Set<string>;
+};
+
+const METADATA_ALIAS = "Metadata$";
 
 const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
@@ -45,7 +53,11 @@ const generateElementComponentsSection = (
         components: options.components,
     });
 
-    collectLazyElementExports(collector, lazyElements);
+    collectLazyElementExports(collector, lazyElements, {
+        isTreeShaken: library.isTreeShaken,
+        intrinsicNames: new Set(options.intrinsicElements.map((entry) => entry.glibName)),
+    });
+
     const source = collector.exportLines.join("\n\n");
 
     return { source, exportedNames: collector.exportedNames };
@@ -81,18 +93,75 @@ const collectCandidateExports = (collector: ExportCollector, options: CandidateE
     }
 };
 
-const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
+const collectLazyElementExports = (
+    collector: ExportCollector,
+    lazyElements: LazyElementSpec[],
+    options: LazyMetadataOptions,
+): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
-        collector.exportLines.push(renderLazyElementExport(spec));
+
+        const refs = {
+            classRef: lazyClassRef(collector, spec, options),
+            metadataRef: lazyMetadataRef(collector, spec, options),
+        };
+
+        collector.exportLines.push(renderLazyElementExport(spec, refs, options));
         collector.exportedNames.add(spec.element);
     }
 };
 
-const renderLazyElementExport = (spec: LazyElementSpec): string => {
+const lazyMetadataRef = (
+    collector: ExportCollector,
+    spec: LazyElementSpec,
+    options: LazyMetadataOptions,
+): string | undefined => {
+    if (!options.isTreeShaken || !options.intrinsicNames.has(spec.element)) {
+        return undefined;
+    }
+
+    collector.imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
+
+    return `${METADATA_ALIAS}.${spec.element}`;
+};
+
+const lazyClassRef = (
+    collector: ExportCollector,
+    spec: LazyElementSpec,
+    options: LazyMetadataOptions,
+): string | undefined => {
+    if (!options.isTreeShaken) {
+        return undefined;
+    }
+
+    const alias = `${spec.namespaceName}$`;
+    const specifier = externalPackageFor(spec.namespaceName) ?? `@gtkx/gi/${spec.namespaceName.toLowerCase()}`;
+    collector.imports.addNamespace(specifier, alias, false);
+
+    return `${alias}.${sanitizeTypeIdentifier(spec.className)}`;
+};
+
+const renderLazyElementExport = (
+    spec: LazyElementSpec,
+    refs: { classRef: string | undefined; metadataRef: string | undefined },
+    options: LazyMetadataOptions,
+): string => {
     const doc = getDoc(spec);
-    const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
+    const args = [sourceStringLiteral(spec.element)];
+
+    if (refs.classRef !== undefined) {
+        args.push(refs.classRef);
+    } else if (refs.metadataRef !== undefined) {
+        args.push("undefined");
+    }
+
+    if (refs.metadataRef !== undefined) {
+        args.push(refs.metadataRef);
+    }
+
+    const pure = options.isTreeShaken ? "/* @__PURE__ */ " : "";
+    const factory = `${pure}createElementComponent(${args.join(", ")})`;
     const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
 
     return `${doc}${spec.typeSource}\n\n${component}`;
@@ -114,9 +183,21 @@ const renderCandidateExport = (
         imports.addNamed(component.module, component.export, false);
     }
 
+    let classRef: string | undefined;
+    let metadataRef: string | undefined;
+
+    if (library.isTreeShaken) {
+        const alias = `${namespace.name}$`;
+        const specifier = externalPackageFor(namespace.name) ?? `@gtkx/gi/${namespace.name.toLowerCase()}`;
+        imports.addNamespace(specifier, alias, false);
+        imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
+        classRef = `${alias}.${sanitizeTypeIdentifier(klass.name)}`;
+        metadataRef = `${METADATA_ALIAS}.${glibName}`;
+    }
+
     const doc = getDoc(klass);
 
-    return `${doc}${renderElementComponentExport(glibName, component)}`;
+    return `${doc}${renderElementComponentExport(glibName, component, classRef, metadataRef)}`;
 };
 
 const resolveElementComponent = (
@@ -134,16 +215,32 @@ const resolveElementComponent = (
     return undefined;
 };
 
-const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
+const renderElementComponentExport = (
+    glibName: string,
+    component: ElementComponent | undefined,
+    classRef: string | undefined,
+    metadataRef: string | undefined,
+): string => {
     const propsType = `${glibName}Props`;
     const annotation = `(props: ${propsType}) => ReactNode`;
-    const factoryCall = `createElementComponent(${sourceStringLiteral(glibName)})`;
+    const args = [sourceStringLiteral(glibName)];
+
+    if (classRef !== undefined) {
+        args.push(classRef);
+    }
+
+    if (metadataRef !== undefined) {
+        args.push(metadataRef);
+    }
+
+    const pure = classRef === undefined ? "" : "/* @__PURE__ */ ";
+    const factoryCall = `${pure}createElementComponent(${args.join(", ")})`;
 
     if (component === undefined) {
         return `export const ${glibName}: ${annotation} = ${factoryCall};`;
     }
 
-    return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
+    return `export const ${glibName}: ${annotation} = ${pure}${component.export}(${factoryCall});`;
 };
 
 export { generateElementComponentsSection, type ElementComponentOverrides };

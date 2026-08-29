@@ -1,9 +1,11 @@
+import { pure } from "./emit.js";
 import { ImportsBuilder } from "./imports.js";
 
 type Declaration = {
     name: string;
     code: string;
     owner?: string | undefined;
+    isLocal?: boolean | undefined;
 };
 
 type ExportedDeclaration = {
@@ -127,12 +129,18 @@ class ModuleBuilder {
 
         const name = `_desc${String(this.hoistedDescriptors.size)}`;
         this.hoistedDescriptors.set(expression, name);
-        this.appendBinding(`const ${name} = ${expression};`, name);
+        this.appendBinding(`const ${name} = ${pure(expression)};`, name);
 
         return name;
     }
 
     appendDeclaration(declaration: Declaration): void {
+        if (declaration.isLocal === true) {
+            this.declarations.push(declaration.code);
+
+            return;
+        }
+
         this.claimExportedName(declaration);
         this.claimTypeName(declaration);
         this.declaredNames.add(declaration.name);

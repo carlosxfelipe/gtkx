@@ -15,6 +15,7 @@ type GiCodegenOptions = {
     isValueUnwrapped: boolean;
     isFinishTrimmed: boolean;
     isInoutInPlace: boolean;
+    isTreeShaken: boolean;
 };
 
 type SplitNamespaces = {
@@ -39,9 +40,12 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
             continue;
         }
 
+        const generated = generateNamespaceModule(namespace, library);
+
         namespaces.push({
             directory: namespaceDirectory(namespace),
-            rawSource: generateNamespaceModule(namespace, library),
+            rawSource: generated.source,
+            rawBootstrapSource: generated.bootstrapSource,
             girFile: namespace.girFile,
         });
     }
@@ -62,6 +66,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         isValueUnwrapped,
         isFinishTrimmed,
         isInoutInPlace,
+        isTreeShaken: options.isTreeShaken,
     });
 
     writeGiStore(gi, namespaces, externalNamespaces, {

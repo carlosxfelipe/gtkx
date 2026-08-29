@@ -20,7 +20,7 @@ That gives the upgrade a single property worth planning around: **clear every de
 Run any command that loads your configuration — `gtkx build`, `gtkx dev`, `gtkx codegen`. If flags are unset, one block prints on stderr:
 
 ```
-[gtkx] warn 2 of 6 future flags are unset. Their behavior becomes the default in GTKX 2.0.
+[gtkx] warn 2 of 7 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
     Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
@@ -103,6 +103,20 @@ introspection data, every deb and rpm gains a libadwaita relation, and every NOT
 entry. The moment something *does* import the Adwaita module, `adw_init` restyles the application and
 libadwaita becomes a hard runtime requirement. Turn the flag on, run the app, and look at it.
 
+### `v2TreeShaking`
+
+Each generated class registers itself as part of its own definition, so the bundler drops the classes your
+app never reaches — registrations included — and `gtkx build` ships only the widgets you render, the classes
+your code touches, and what their signatures reference. There is nothing for `tsc` to report: flip the flag,
+rebuild, and the bundle shrinks. Three edges to know about: a bare `import "@gtkx/gi/gtk"` no longer retains
+anything by itself (import a value from the namespace instead); rendering an element whose component was
+never imported throws instead of silently constructing the wrong class; and in a production bundle
+`GObject.typeFromName` resolves only the types the bundle registered — GLib's own contract — so import a
+class if you need its name to resolve (dev and tests never bundle and keep every type registered). Dynamic uses of the `animated` value
+itself — spreading it, `Object.keys(animated)` — keep every widget in the bundle, and `gtkx build` warns
+about the file; member access and the call form stay fully shakeable while the flag rewrites them, and
+member access is itself deprecated (see the table below).
+
 The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
 
 ## Stop binding every installed library
@@ -143,6 +157,7 @@ ones whose tag ends in **`Removed in v2`**. Searching the store for that phrase 
 | `GObject.buildValue(gtype, populate)` | 1.3 | Pass the value itself, or `new Value()` and `init` |
 | The `@gtkx/gi/cairo` subpath | 1.3 | Import from `@gtkx/cairo` |
 | The `*ConstructorProps` type aliases in `@gtkx/cairo` | 1.3 | None — the stub constructors they described are gone |
+| Property access on `animated` (`animated.GtkLabel`) | 1.6 | Import the component and call `animated(GtkLabel)` — the wrapper is cached, so the call is free to repeat. In 2.0 `animated` is only callable, and the build-time rewrite that kept property access shakeable is deleted with it; `gtkx build` names each file still using property access |
 
 `Gdk.RGBA.create` is the one worth reading twice: it swallows a color string GDK cannot parse and leaves you
 with transparent black. Its replacement makes you check.

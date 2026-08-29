@@ -46,6 +46,7 @@ export {
     getHandle,
     getInstanceType,
     getWrapperClass,
+    installInterfaces,
     peekTypeClass,
     registerClassStruct,
     registerInterface,
@@ -54,6 +55,7 @@ export {
     type StaticBase,
     setHandle,
     wrapHandle,
+    type WrapperClass,
     type WrapperClassResolver,
 } from "./registry.js";
 /** @public */
@@ -95,6 +97,7 @@ export {
     TYPE_UNICHAR,
     TYPE_VARIANT,
     type TypedClass,
+    retainWrapperClasses,
     typeFromName,
     typeInterfaces,
     typeIsA,

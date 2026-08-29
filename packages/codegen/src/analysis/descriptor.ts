@@ -1,6 +1,6 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCursorBounds } from "../gir/parameter.js";
-import { joinArgs } from "../writer/emit.js";
+import { joinArgs, pure } from "../writer/emit.js";
 
 type Ownership = "borrowed" | "full";
 
@@ -70,6 +70,7 @@ type BoxedOptions = {
     isCallerAllocated: boolean;
     isInline?: boolean;
     size: number | undefined;
+    fallbackClass?: string | undefined;
 };
 
 type StructOptions = {
@@ -83,6 +84,7 @@ type FundamentalOptions = {
     ownership: Ownership;
     typeName: string | undefined;
     wrapperClass: string | undefined;
+    fallbackClass?: string | undefined;
     isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
 };
@@ -178,26 +180,29 @@ const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     return present.length === 0 ? undefined : `{ ${present.join(", ")} }`;
 };
 
+const optionalLiteralEntry = (key: string, value: string | undefined): string | undefined =>
+    value === undefined ? undefined : `${key}: ${sourceStringLiteral(value)}`;
+
 const tScalar = (name: ScalarDescriptorName): string => T[name];
 
 const tString = (ownership: Ownership, length?: string): string =>
     call("string", [sourceStringLiteral(ownership), length]);
 
-const tObject = (ownership: Ownership): string => call("object", [sourceStringLiteral(ownership)]);
+const tObject = (ownership: Ownership, fallbackClass?: string): string =>
+    call("object", [sourceStringLiteral(ownership), fallbackClass]);
 
 const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
         sourceStringLiteral(glibName),
         optionsObject([
             `ownership: ${sourceStringLiteral(options.ownership)}`,
-            options.sharedLibrary === undefined
-                ? undefined
-                : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
+            optionalLiteralEntry("sharedLibrary", options.sharedLibrary),
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
-            options.freeFnName === undefined ? undefined : `freeFnName: ${sourceStringLiteral(options.freeFnName)}`,
+            optionalLiteralEntry("freeFnName", options.freeFnName),
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
+            options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
         ]),
     ]);
 
@@ -224,6 +229,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             `ownership: ${sourceStringLiteral(options.ownership)}`,
             options.typeName === undefined ? undefined : `typeName: ${sourceStringLiteral(options.typeName)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
+            options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
             options.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
         ]),
@@ -327,11 +333,13 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     const unpackEntry = spec.isReturnUnpacked ? `, ${UNPACKED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
-    return call("fn", [
-        sourceStringLiteral(lib),
-        sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} }`,
-    ]);
+    return pure(
+        call("fn", [
+            sourceStringLiteral(lib),
+            sourceStringLiteral(cIdentifier),
+            `() => ({ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} })`,
+        ]),
+    );
 };
 
 export {

@@ -53,6 +53,7 @@ type ResolvedFuture = {
     isInoutInPlace: boolean;
     isResourceImported: boolean;
     isAdwaitaDefault: boolean;
+    isTreeShaken: boolean;
 };
 
 /** Configuration reduced to the values the app runtime and the build need, with paths already resolved. */
@@ -221,6 +222,7 @@ const futureSchema = z.object({
     v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
     v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
     v2DefaultLibraries: z.boolean({ error: "must be a boolean" }).optional(),
+    v2TreeShaking: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
 const FUTURE_KEYS: Set<string> = new Set(Object.keys(futureSchema.shape));
@@ -361,6 +363,7 @@ const resolveFuture = (future: Config["future"]): ResolvedFuture => ({
     isInoutInPlace: future?.v2InoutReturns === true,
     isResourceImported: future?.v2ResourceImports === true,
     isAdwaitaDefault: future?.v2DefaultLibraries === true,
+    isTreeShaken: future?.v2TreeShaking === true,
 });
 
 const unknownFutureKeys = (future: Config["future"]): string[] =>

@@ -34,6 +34,7 @@ import {
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
+import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
@@ -78,6 +79,14 @@ type AppendInstanceMethodsOptions = {
     className: string;
 };
 
+type TreeShakenClassOptions = {
+    klass: GirClass;
+    className: string;
+    heritage: string;
+    body: string;
+    implemented: ImplementedRef[];
+};
+
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
     if (!isEmittableEntity(klass)) {
         return;
@@ -95,18 +104,25 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const parentExpression = resolveParent(context, klass);
     const extendsClause = renderExtendsClause(context, parentExpression, klass, callables);
     const implemented = resolveImplementedRefs(context, klass);
-    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
-    const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
+    const implementsClause = renderImplementsClause(implemented);
+
+    if (context.isTreeShaken) {
+        context.beginRegistrations();
+    }
+
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    const doc = getDoc(klass);
-    const modifier = klass.isAbstract ? "abstract " : "";
+    const heritage = `${extendsClause}${implementsClause}`;
 
-    context.declare({
-        name: className,
-        code: `${doc}export ${modifier}class ${className}${extendsClause}${implementsClause} {\n${body}\n}`,
-        owner: klass.name,
-    });
+    if (context.isTreeShaken) {
+        declareTreeShakenClass(context, { klass, className, heritage, body, implemented });
+    } else {
+        context.declare({
+            name: className,
+            code: `${getDoc(klass)}export ${classModifier(klass)}class ${className}${heritage} {\n${body}\n}`,
+            owner: klass.name,
+        });
+    }
 
     context.declare({
         name: `${className}ConstructorProps`,
@@ -114,8 +130,37 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     });
 
     appendMemberDeclarations({ context, klass, className, accessors, implemented });
-    appendInstallMixins(context, className, implemented);
-    appendClassRegistrations(context, klass, className);
+
+    if (!context.isTreeShaken) {
+        appendInstallMixins(context, className, implemented);
+        appendClassRegistrations(context, klass, className);
+    }
+};
+
+const classModifier = (klass: GirClass): string => (klass.isAbstract ? "abstract " : "");
+
+const renderImplementsClause = (implemented: ImplementedRef[]): string => {
+    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
+
+    return typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
+};
+
+const declareTreeShakenClass = (context: ModuleContext, options: TreeShakenClassOptions): void => {
+    const { klass, className, heritage, body, implemented } = options;
+    const localName = localClassName(className);
+    appendInstallMixins(context, localName, implemented);
+    appendClassRegistrations(context, klass, localName);
+    const registrations = context.takeRegistrations();
+
+    declareFoldedClass({
+        context,
+        className,
+        doc: getDoc(klass),
+        owner: klass.name,
+        localDeclaration: `${classModifier(klass)}class ${localName}${heritage} {\n${body}\n}`,
+        registrations,
+        hasInstanceInterface: true,
+    });
 };
 
 const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
@@ -224,37 +269,56 @@ const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
     }
 };
 
-const appendInstallMixins = (context: ModuleContext, className: string, implemented: ImplementedRef[]): void => {
+const appendInstallMixins = (context: ModuleContext, targetName: string, implemented: ImplementedRef[]): void => {
     if (implemented.length === 0) {
         return;
     }
 
-    context.addRuntimeImport("installMixins");
-    const makerRefs = implemented.map((ref) => ref.makerRef);
-    const localRefs = makerRefs.filter((ref) => !ref.includes("."));
+    if (!context.isTreeShaken) {
+        context.addRuntimeImport("installMixins");
+        const makerRefs = implemented.map((ref) => ref.makerRef);
+        const localRefs = makerRefs.filter((ref) => !ref.includes("."));
 
-    context.module.appendRegistration(`installMixins(${className}, [${makerRefs.join(", ")}]);`, [
-        className,
-        ...localRefs,
-    ]);
+        context.module.appendRegistration(`installMixins(${targetName}, [${makerRefs.join(", ")}]);`, [
+            targetName,
+            ...localRefs,
+        ]);
+
+        return;
+    }
+
+    const registered = implemented.filter((ref) => ref.interfaceKlass.glibGetType !== undefined);
+    const unregistered = implemented.filter((ref) => ref.interfaceKlass.glibGetType === undefined);
+
+    if (registered.length > 0) {
+        context.addRuntimeImport("installInterfaces");
+        const refs = registered.map((ref) => ref.typeRef);
+        context.collectRegistration(`installInterfaces(${targetName}, [${refs.join(", ")}]);`);
+    }
+
+    if (unregistered.length > 0) {
+        context.addRuntimeImport("installMixins");
+        const refs = unregistered.map((ref) => ref.makerRef);
+        context.collectRegistration(`installMixins(${targetName}, [${refs.join(", ")}]);`);
+    }
 };
 
-const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
+const appendClassRegistrations = (context: ModuleContext, klass: GirClass, targetName: string): void => {
     const gtypeExpr = renderSourceGtype(context, klass);
 
     appendWrapperClassRegistration(context, {
-        className,
+        className: targetName,
         gtypeExpr,
         vfuncs: renderVfuncMetadata(context, klass),
     });
 
-    appendClassStructRegistration(context, klass, className, gtypeExpr);
+    appendClassStructRegistration(context, klass, targetName, gtypeExpr);
 };
 
 const appendClassStructRegistration = (
     context: ModuleContext,
     klass: GirClass,
-    className: string,
+    targetName: string,
     gtypeExpr: string | undefined,
 ): void => {
     const typeStruct = klass.glibTypeStruct;
@@ -272,8 +336,8 @@ const appendClassStructRegistration = (
     const structName = sanitizeTypeIdentifier(resolved.value.name);
     context.addRuntimeImport("registerClassStruct");
 
-    context.module.appendRegistration(`registerClassStruct(${className}, ${structName});`, [
-        className,
+    context.collectRegistration(`registerClassStruct(${targetName}, ${structName});`, [
+        targetName,
         structName,
     ]);
 };
@@ -445,9 +509,16 @@ const renderExtendsClause = (
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     const parent = getParentRef(klass);
 
-    return parent === undefined
-        ? undefined
-        : context.qualify(parent.namespaceName ?? context.namespace.name, sanitizeTypeIdentifier(parent.typeName));
+    if (parent === undefined) {
+        return undefined;
+    }
+
+    const qualified = context.qualify(
+        parent.namespaceName ?? context.namespace.name,
+        sanitizeTypeIdentifier(parent.typeName),
+    );
+
+    return context.isTreeShaken ? context.hoistBaseRef(qualified) : qualified;
 };
 
 export { generateClass };

@@ -10,5 +10,6 @@ export default defineConfig({
         v2InoutReturns: true,
         v2ResourceImports: true,
         v2DefaultLibraries: true,
+        v2TreeShaking: true,
     },
 });

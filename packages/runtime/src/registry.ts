@@ -10,11 +10,12 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
-import { copyLayerMembers, type Mixin, type MixinReceiver } from "./mixin.js";
+import { copyLayerMembers, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
     TYPE_INVALID,
     TYPE_OBJECT,
     type TypedClass,
+    typeFundamental,
     typeInterfaces,
     typeIsA,
     typeName,
@@ -30,6 +31,22 @@ import {
  */
 type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
     (C extends abstract new (...args: infer A) => infer R ? abstract new (...args: A) => R : never);
+
+/**
+ * Static side of class `C` with its construct signature retargeted to produce `I`. A generated
+ * wrapper class is declared locally and exported as a registered constant; its instance type is
+ * exported as an interface extending the local class so declaration merging and module
+ * augmentation keep working, and this type makes constructing the constant produce that interface.
+ */
+type WrapperClass<C, I> = Omit<C, "prototype"> & {
+    /** Prototype retyped to the exported instance interface, so `instanceof` narrows to it. */
+    prototype: I;
+} &
+(C extends new (...args: infer A) => unknown
+    ? new (...args: A) => I
+    : C extends abstract new (...args: infer A) => unknown
+        ? abstract new (...args: A) => I
+        : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor = {
@@ -375,6 +392,31 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: I
 }
 
 /**
+ * Copies the members of registered interfaces onto a wrapper class, resolving each interface's
+ * mixin through the registry rather than taking the mixin itself, so a class states which
+ * interfaces it implements by referencing their classes. The interfaces must already be
+ * registered through `registerInterface`; generated code guarantees that by declaring interfaces
+ * ahead of the classes that implement them.
+ *
+ * @param cls Wrapper class adopting the interfaces.
+ * @param interfaces Registered interface classes to adopt, in order.
+ * @throws If an entry is not a registered interface.
+ */
+function installInterfaces(cls: AnyClass, interfaces: AnyClass[]): void {
+    const mixins = interfaces.map((iface) => {
+        const mixin = getInterfaceMixin(getClassType(iface));
+
+        if (mixin === undefined) {
+            throw new Error(`installInterfaces: ${iface.name} is not a registered interface`);
+        }
+
+        return mixin;
+    });
+
+    installMixins(cls, mixins);
+}
+
+/**
  * Wraps a native handle in a JS wrapper instance. With no class, resolves and
  * reuses the wrapper for the handle's runtime GType (composing interface mixins),
  * and hands back an instance that already carries a handle unchanged; with an
@@ -443,6 +485,23 @@ function getWrapperClass(type: bigint): AnyClass {
     return cls;
 }
 
+function getExactWrapperClass(type: bigint, label?: string): AnyClass {
+    if (type === TYPE_INVALID) {
+        throw new Error(`No GType is registered under '${label ?? String(type)}'`);
+    }
+
+    const cls = classRegistry.get(type);
+
+    if (cls === undefined) {
+        throw new Error(
+            `No wrapper class is registered for '${label ?? typeName(type) ?? String(type)}': ` +
+            "its module was dropped from the bundle or never imported",
+        );
+    }
+
+    return cls;
+}
+
 function resolveWrapperClass(type: bigint): AnyClass | null {
     let currentType = type;
 
@@ -491,7 +550,35 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
     return applied.size === 0 ? base : cls;
 }
 
-function resolveComposedClass(runtimeType: bigint): AnyClass | null {
+function isWrappableBase(fallbackType: bigint): boolean {
+    return fallbackType === TYPE_INVALID || typeFundamental(fallbackType) === TYPE_OBJECT;
+}
+
+function isBetweenWalkAndRuntime(fallbackType: bigint, walkedType: bigint, runtimeType: bigint): boolean {
+    return fallbackType !== walkedType && typeIsA(fallbackType, walkedType) && typeIsA(runtimeType, fallbackType);
+}
+
+function chooseWrapBase(walked: AnyClass | null, fallback: AnyClass | undefined, runtimeType: bigint): AnyClass | null {
+    if (fallback === undefined || !isWrappableBase(getClassType(fallback))) {
+        return walked;
+    }
+
+    if (walked === null || isBetweenWalkAndRuntime(getClassType(fallback), getClassType(walked), runtimeType)) {
+        return fallback;
+    }
+
+    return walked;
+}
+
+function stampComposedClass(composed: AnyClass, runtimeType: bigint): AnyClass {
+    setClassType(composed, runtimeType);
+    wrapperClasses.add(composed);
+    composedClassRegistry.set(runtimeType, composed);
+
+    return composed;
+}
+
+function resolveComposedClass(runtimeType: bigint, fallbackClass?: () => AnyClass): AnyClass | null {
     const exact = classRegistry.get(runtimeType);
 
     if (exact) {
@@ -504,7 +591,8 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
         return cached;
     }
 
-    const base = resolveWrapperClass(runtimeType);
+    const walked = resolveWrapperClass(runtimeType);
+    const base = chooseWrapBase(walked, fallbackClass?.(), runtimeType);
 
     if (base === null) {
         return null;
@@ -512,37 +600,37 @@ function resolveComposedClass(runtimeType: bigint): AnyClass | null {
 
     const composed = createComposedClass(base, runtimeType);
 
-    if (composed === base) {
+    if (composed !== base) {
+        return stampComposedClass(composed, runtimeType);
+    }
+
+    if (base === walked) {
         return base;
     }
 
-    setClassType(composed, runtimeType);
-    wrapperClasses.add(composed);
-    composedClassRegistry.set(runtimeType, composed);
-
-    return composed;
+    return stampComposedClass(class extends base {}, runtimeType);
 }
 
-function wrapObject(value: unknown): object | null {
-    return value == null ? null : getOrCreateWrapper(value as ExternalObject<Handle>);
+function wrapObject(value: unknown, fallbackClass?: () => AnyClass): object | null {
+    return value == null ? null : getOrCreateWrapper(value as ExternalObject<Handle>, fallbackClass);
 }
 
-function wrapCallScopedObject(value: unknown): object | null {
-    return value == null ? null : wrapperFor(value as ExternalObject<Handle>, bindCallScopedWrapper);
+function wrapCallScopedObject(value: unknown, fallbackClass?: () => AnyClass): object | null {
+    return value == null ? null : wrapperFor(value as ExternalObject<Handle>, bindCallScopedWrapper, fallbackClass);
 }
 
 function existingWrapperFor(handle: ExternalObject<Handle>): object | null {
     return handleMap.has(handle) ? handle : getWrapper(handle);
 }
 
-function createWrapper(handle: ExternalObject<Handle>): object {
+function createWrapper(handle: ExternalObject<Handle>, fallbackClass?: () => AnyClass): object {
     const runtimeType: bigint = getType(handle);
 
     if (runtimeType === TYPE_INVALID) {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
-    const cls = resolveComposedClass(runtimeType);
+    const cls = resolveComposedClass(runtimeType, fallbackClass);
 
     if (!cls) {
         throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
@@ -551,21 +639,21 @@ function createWrapper(handle: ExternalObject<Handle>): object {
     return Object.create(cls.prototype) as object;
 }
 
-function wrapperFor(handle: ExternalObject<Handle>, bind: WrapperBinding): object {
+function wrapperFor(handle: ExternalObject<Handle>, bind: WrapperBinding, fallbackClass?: () => AnyClass): object {
     const existing = existingWrapperFor(handle);
 
     if (existing) {
         return existing;
     }
 
-    const instance = createWrapper(handle);
+    const instance = createWrapper(handle, fallbackClass);
     bind(handle, instance);
 
     return instance;
 }
 
-function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
-    return wrapperFor(handle, registerWrapper);
+function getOrCreateWrapper(handle: ExternalObject<Handle>, fallbackClass?: () => AnyClass): object {
+    return wrapperFor(handle, registerWrapper, fallbackClass);
 }
 
 function instanceClassName(instance: object): string {
@@ -639,8 +727,10 @@ export {
     registerWrapperClass,
     registerWrapperClassResolver,
     registerInterface,
+    installInterfaces,
     wrapFundamentalHandle,
     wrapHandle,
+    getExactWrapperClass,
     getWrapperClass,
     resolveWrapperClass,
     getHandle,
@@ -657,5 +747,6 @@ export {
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
+    type WrapperClass,
     type WrapperClassResolver,
 };

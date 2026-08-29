@@ -29,6 +29,14 @@ const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
 const gTypeFundamental = bind(LIB, "g_type_fundamental", [biguint64T], biguint64T);
 const gTypeName = bind(LIB, "g_type_name", [biguint64T], stringT("borrowed"));
 const gTypeInterfaces = bind(LIB, "g_type_interfaces", [biguint64T, refT(uint32T)], sizedArrayT(biguint64T, 1, "full"));
+
+const gTypeInterfacePrerequisites = bind(
+    LIB,
+    "g_type_interface_prerequisites",
+    [biguint64T, refT(uint32T)],
+    sizedArrayT(biguint64T, 1, "full"),
+);
+
 /** GType tag for an invalid or uninitialized type. */
 const TYPE_INVALID = 0n;
 /** GType tag for the absence of a value (`void`). */
@@ -137,10 +145,25 @@ function typeInterfaces(type: bigint): bigint[] {
     return gTypeInterfaces(type, nInterfacesRef) as bigint[];
 }
 
+function typeInterfacePrerequisites(type: bigint): bigint[] {
+    const nPrerequisitesRef = { value: 0 };
+
+    return gTypeInterfacePrerequisites(type, nPrerequisitesRef) as bigint[];
+}
+
 /** Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. */
 function typeFromName(name: string): bigint {
     return gTypeFromName(name) as bigint;
 }
+
+/**
+ * Keeps the given wrapper classes in a tree-shaken bundle: a generated bootstrap names the classes
+ * its namespace cannot operate without as arguments here, which is a reference a bundler retains.
+ *
+ * @param wrappers Wrapper classes to keep.
+ * @returns The same classes, untouched.
+ */
+const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
 
 function typeFundamental(type: bigint): bigint {
     return gTypeFundamental(type) as bigint;
@@ -283,8 +306,10 @@ export {
     getStrvType,
     isResolvableDescriptor,
     isTypedClass,
+    retainWrapperClasses,
     typeIsA,
     typeParent,
+    typeInterfacePrerequisites,
     typeInterfaces,
     typeFromName,
     typeFundamental,

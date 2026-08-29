@@ -230,6 +230,31 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   any application code runs. Turn the flag on, import what you were going to import, run the app, and look
   at it.
 
+- **`v2TreeShaking`**: folds each generated class's registration into its own definition, so `gtkx build`
+  drops the classes an app never reaches instead of shipping every binding of every configured library.
+  Rendered elements, classes your code touches, and everything their signatures reference stay; the rest —
+  typically most of the store — is removed, which roughly halves a small app's bundle. No call site changes,
+  so `tsc` reports nothing for this flag.
+
+  Three behaviors move with it: a bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
+  from the namespace instead (namespace initialization such as `gtk_init` and the prototype overrides still
+  run whenever the namespace is imported at all). String-driven rendering keeps working, because every path
+  that resolves a type name only ever meets registered types: a rendered element's component keeps its class,
+  and a value a binding hands back keeps the classes its signature names — but rendering an element whose
+  component the bundle never imported throws, since constructing through an ancestor would build the wrong
+  type. `typeFromName` keeps GLib's contract everywhere: it finds only types already registered in-process,
+  and a production bundle registers a generated type when its class is retained, so import the class if you
+  need its name to resolve — `gtkx dev` and tests never bundle, and there every type stays registered
+  exactly as today.
+
+  The `animated` binding gets a build-time rewrite of its own: `animated.GtkX` member accesses and
+  `animated(...)` calls become imports of exactly the widgets they animate, while a dynamic use of the
+  `animated` value itself — spreading it, `Object.keys`, computed access — keeps the whole widget namespace
+  and `gtkx build` warns about the file. Property access on `animated` is deprecated and removed in GTKX 2.0
+  along with its rewrite — prefer importing the component and calling `animated(GtkX)`, the only form 2.0
+  keeps, where `animated` is plainly callable and no rewrite exists at all; `gtkx build` names each file
+  still reading components off `animated`.
+
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically. A key the `future` block does not define is ignored rather than rejected, and codegen names it on each run so a typo does not stay silent.
 
 ### The deprecation warning
@@ -238,7 +263,7 @@ Loading a configuration that leaves a flag unset prints one grouped block on std
 flag with the stable id that identifies it:
 
 ```
-[gtkx] warn 2 of 6 future flags are unset. Their behavior becomes the default in GTKX 2.0.
+[gtkx] warn 2 of 7 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
     Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
@@ -265,6 +290,7 @@ Every flag has an id, and each one can be silenced on its own:
 | `v2FinishResults` | `gtkx-v2-finish-results` |
 | `v2InoutReturns` | `gtkx-v2-inout-returns` |
 | `v2ResourceImports` | `gtkx-v2-resource-imports` |
+| `v2TreeShaking` | `gtkx-v2-tree-shaking` |
 
 ```ts
 export default defineConfig({
