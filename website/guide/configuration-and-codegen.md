@@ -290,6 +290,7 @@ Every flag has an id, and each one can be silenced on its own:
 | `v2FinishResults` | `gtkx-v2-finish-results` |
 | `v2InoutReturns` | `gtkx-v2-inout-returns` |
 | `v2ResourceImports` | `gtkx-v2-resource-imports` |
+| `v2DefaultLibraries` | `gtkx-v2-default-libraries` |
 | `v2TreeShaking` | `gtkx-v2-tree-shaking` |
 
 ```ts

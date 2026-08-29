@@ -29,8 +29,6 @@ yarn add -D @gtkx/mcp @gtkx/testing
 
 :::
 
-`@gtkx/mcp` has to be a direct dev dependency. Under pnpm, the nested copy `@gtkx/cli` pulls in stays in the virtual store, and the launch below fails with `gtkx-mcp: command not found`.
-
 `gtkx mcp init` writes the server into the file an editor reads, so there is no JSON to hand-edit:
 
 ```bash

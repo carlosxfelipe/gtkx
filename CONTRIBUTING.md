@@ -132,7 +132,7 @@ GTKX follows the same contract for every major: **2.0 removes only what 1.x alre
 
 ### The ladder
 
-1. **1.6** is the migration target. It ships the deprecation warnings and changes no defaults, so its behavior is identical to 1.5. A project that upgrades to 1.6, clears every warning the CLI prints, and clears every symbol tagged `Removed in v2` has already done the whole 2.0 migration.
+1. **1.6** is the migration target. It ships the deprecation warnings without changing the existing runtime or future-flag defaults, so application behavior remains on 1.5 semantics until a project opts in. A project that upgrades to 1.6, clears every warning the CLI prints, and clears every symbol tagged `Removed in v2` has already done the whole 2.0 migration.
 2. **2.0** is the last 1.x minus the deprecated paths. It deletes the deprecated symbols, the `future` block, and the compatibility branches behind it. Nothing else.
 3. **2.1** is where held-back feature work resumes.
 

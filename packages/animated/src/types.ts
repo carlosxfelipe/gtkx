@@ -64,8 +64,7 @@ type AnimatedElementMap = {
 /**
  * The widget components of the generated `@gtkx/jsx` store, exposed as properties of `animated`.
  *
- * @deprecated Property access on `animated` is removed in GTKX 2.0; import the component and call
- * `animated(Component)` instead.
+ * @deprecated Since 1.6. Use `AnimatedElementMap` instead. Removed in v2.
  */
 /* eslint-disable-next-line sonarjs/redundant-type-aliases -- deprecated alias kept until 2.0 removes it */
 type AnimatedElements = AnimatedElementMap;

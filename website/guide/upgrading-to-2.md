@@ -33,7 +33,7 @@ Run any command that loads your configuration — `gtkx build`, `gtkx dev`, `gtk
   Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
 ```
 
-Each line is one flag you have not adopted. A project that prints nothing has nothing to do here.
+Each line is one flag you have not adopted. A project with no unset flags has nothing to do here; a project that silences every pending warning still has those flags to adopt.
 
 ## Adopt one flag at a time
 
@@ -158,6 +158,7 @@ ones whose tag ends in **`Removed in v2`**. Searching the store for that phrase 
 | The `@gtkx/gi/cairo` subpath | 1.3 | Import from `@gtkx/cairo` |
 | The `*ConstructorProps` type aliases in `@gtkx/cairo` | 1.3 | None — the stub constructors they described are gone |
 | Property access on `animated` (`animated.GtkLabel`) | 1.6 | Import the component and call `animated(GtkLabel)` — the wrapper is cached, so the call is free to repeat. In 2.0 `animated` is only callable, and the build-time rewrite that kept property access shakeable is deleted with it; `gtkx build` names each file still using property access |
+| `AnimatedElements` | 1.6 | `AnimatedElementMap` |
 
 `Gdk.RGBA.create` is the one worth reading twice: it swallows a color string GDK cannot parse and leaves you
 with transparent black. Its replacement makes you check.

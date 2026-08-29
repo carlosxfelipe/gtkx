@@ -4,7 +4,7 @@ A tour of [`@gtkx/animated`](../../packages/animated), the React Spring target f
 
 ## What it demonstrates
 
-- `useSpring` with the built-in `config` presets (`gentle`, `wobbly`, `stiff`, `slow`, `molasses`), animating widget properties such as opacity and margins through `animated.GtkLabel`-style wrappers.
+- `useSpring` with the built-in `config` presets (`gentle`, `wobbly`, `stiff`, `slow`, `molasses`), animating widget properties such as opacity and margins through `animated(GtkLabel)` wrappers.
 - Interpolation with `value.to(...)`: one spring driving formatted label text, a progress fraction, and widget geometry at once.
 - `useSprings` for a set of independently animated widgets.
 - `useTrail` for staggered entrances.
