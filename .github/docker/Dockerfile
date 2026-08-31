@@ -18,6 +18,8 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        meson \
+        ninja-build \
         gettext \
         locales-all \
         pkg-config \
@@ -35,8 +37,6 @@ RUN apt-get update \
         xwayland-run \
         dbus \
         git \
-        gdb \
-        valgrind \
         libasan8 \
         adwaita-icon-theme \
         gsettings-desktop-schemas \
@@ -71,7 +71,7 @@ RUN pipx install \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG NODE24_VERSION=24.19.0
+ARG NODE26_VERSION=26.8.1
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
@@ -79,9 +79,9 @@ RUN set -eux \
         arm64) node_arch=arm64 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-${node_arch}.tar.xz" \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-${node_arch}.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
-    && node --version | grep -q "v${NODE24_VERSION}"
+    && node --version | grep -q "v${NODE26_VERSION}"
 
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
 
@@ -95,14 +95,11 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.98.0
 ARG RUST_NIGHTLY=nightly-2026-08-20
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri --component rustfmt \
+RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component rustfmt \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
-
-RUN cargo install cargo-llvm-cov --locked \
-    && chmod -R a+rwX "$CARGO_HOME"
 
 RUN if [ -d /usr/share/vulkan/icd.d ]; then \
         find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \

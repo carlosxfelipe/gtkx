@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::OnceLock;
 
 use glib::{LogField, LogLevel, LogWriterOutput};
@@ -5,6 +6,61 @@ use glib::{LogField, LogLevel, LogWriterOutput};
 use super::error_reporter;
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
+
+/// State of the trap on one thread: `armed` for as long as a native call is on that thread's
+/// stack, `caught` holding the first `G_LOG_LEVEL_CRITICAL` the callee logged while it was.
+struct TrapSlot {
+    armed: bool,
+    caught: Option<String>,
+}
+
+thread_local! {
+    static CRITICAL_TRAP: RefCell<TrapSlot> = const {
+        RefCell::new(TrapSlot {
+            armed: false,
+            caught: None,
+        })
+    };
+}
+
+/// Collects the criticals a callee logs instead of raising them into JavaScript from the callee's
+/// own stack frame, so a callee that rejects its arguments through `g_return_if_fail` fails the
+/// call that made it rather than the process. Armed for the duration of one `cif.call` and
+/// restores the enclosing trap when disarmed, so a call made from inside a callback keeps its own.
+/// Restoring also happens on drop, so a call that unwinds cannot leave the trap armed and swallow
+/// the criticals logged after it.
+pub(crate) struct CriticalTrap {
+    outer: Option<TrapSlot>,
+}
+
+impl CriticalTrap {
+    pub(crate) fn arm() -> Self {
+        let armed = TrapSlot {
+            armed: true,
+            caught: None,
+        };
+
+        Self {
+            outer: Some(CRITICAL_TRAP.with(|trap| trap.replace(armed))),
+        }
+    }
+
+    pub(crate) fn disarm(mut self) -> Option<String> {
+        self.restore()
+    }
+
+    fn restore(&mut self) -> Option<String> {
+        let outer = self.outer.take()?;
+
+        CRITICAL_TRAP.with(|trap| trap.replace(outer)).caught
+    }
+}
+
+impl Drop for CriticalTrap {
+    fn drop(&mut self) {
+        self.restore();
+    }
+}
 
 pub(crate) fn install() {
     INSTALLED.get_or_init(|| {
@@ -16,9 +72,31 @@ fn write_log(level: LogLevel, fields: &[LogField<'_>]) -> LogWriterOutput {
     if let Some(severity) = fatal_severity(level) {
         let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
         let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
-        error_reporter::report_str(&format!("{domain}-{severity}: {message}"));
+        let report = format!("{domain}-{severity}: {message}");
+
+        if !matches!(level, LogLevel::Critical) || !trap(&report) {
+            error_reporter::report_str(&report);
+        }
     }
     glib::log_writer_default(level, fields)
+}
+
+fn trap(message: &str) -> bool {
+    CRITICAL_TRAP.with(|cell| {
+        let Ok(mut slot) = cell.try_borrow_mut() else {
+            return false;
+        };
+
+        if !slot.armed {
+            return false;
+        }
+
+        if slot.caught.is_none() {
+            slot.caught = Some(message.to_owned());
+        }
+
+        true
+    })
 }
 
 fn fatal_severity(level: LogLevel) -> Option<&'static str> {
@@ -34,93 +112,4 @@ fn field_value<'a>(fields: &'a [LogField<'_>], key: &str) -> Option<&'a str> {
         .iter()
         .find(|field| field.key() == key)
         .and_then(LogField::value_str)
-}
-
-#[cfg(test)]
-mod tests {
-    use glib::gstr;
-    use test_support::napi_mock;
-
-    use super::*;
-    use crate::host::node_env;
-
-    fn entry_fields<'a>(domain: &'a str, message: &'a str) -> [LogField<'a>; 2] {
-        [
-            LogField::new(gstr!("GLIB_DOMAIN"), domain.as_bytes()),
-            LogField::new(gstr!("MESSAGE"), message.as_bytes()),
-        ]
-    }
-
-    #[test]
-    fn error_and_critical_are_the_fatal_severities() {
-        assert_eq!(fatal_severity(LogLevel::Error), Some("ERROR"));
-        assert_eq!(fatal_severity(LogLevel::Critical), Some("CRITICAL"));
-        assert_eq!(fatal_severity(LogLevel::Warning), None);
-        assert_eq!(fatal_severity(LogLevel::Message), None);
-        assert_eq!(fatal_severity(LogLevel::Info), None);
-        assert_eq!(fatal_severity(LogLevel::Debug), None);
-    }
-
-    #[test]
-    fn critical_entries_raise_a_fatal_exception() {
-        node_env::run_installed(|| {
-            let before = napi_mock::count("napi_fatal_exception");
-            let output = write_log(
-                LogLevel::Critical,
-                &entry_fields("Gtk", "invalid widget use"),
-            );
-            assert_eq!(output, LogWriterOutput::Handled);
-            assert_eq!(napi_mock::count("napi_fatal_exception"), before + 1);
-        });
-    }
-
-    #[test]
-    fn sub_critical_entries_flow_to_the_default_writer_without_reporting() {
-        node_env::run_installed(|| {
-            let before = napi_mock::count("napi_fatal_exception");
-            for level in [LogLevel::Warning, LogLevel::Message, LogLevel::Debug] {
-                write_log(level, &entry_fields("Gtk", "a routine entry"));
-            }
-            assert_eq!(napi_mock::count("napi_fatal_exception"), before);
-        });
-    }
-
-    #[test]
-    fn off_thread_criticals_marshal_the_fatal_to_the_install_thread() {
-        node_env::run_installed(|| {
-            let before = napi_mock::count("napi_fatal_exception");
-            let count_on_emitting_thread = std::thread::spawn(move || {
-                write_log(
-                    LogLevel::Critical,
-                    &entry_fields("Gtk", "an off-thread critical"),
-                );
-                napi_mock::count("napi_fatal_exception")
-            })
-            .join()
-            .expect("the off-thread writer call should not crash");
-            assert_eq!(count_on_emitting_thread, before);
-
-            test_support::pump_default_context_until(|| {
-                napi_mock::count("napi_fatal_exception") > before
-            });
-            assert_eq!(napi_mock::count("napi_fatal_exception"), before + 1);
-        });
-    }
-
-    #[test]
-    fn installed_writer_receives_structured_glib_logs() {
-        node_env::run_installed(|| {
-            install();
-            install();
-            let before = napi_mock::count("napi_fatal_exception");
-            glib::log_structured!(
-                "gtkx-test",
-                LogLevel::Critical,
-                {
-                    "MESSAGE" => "a structured critical";
-                }
-            );
-            assert_eq!(napi_mock::count("napi_fatal_exception"), before + 1);
-        });
-    }
 }

@@ -38,13 +38,7 @@
             ],
             "ignoreDependencies": [
                 "@gtkx/cairo",
-                "@gtkx/runtime",
                 "@gtkx/native"
-            ]
-        },
-        "scripts": {
-            "entry": [
-                "**/*.ts"
             ]
         },
         "website": {
@@ -93,7 +87,8 @@
         "packages/e2e": {
             "entry": [
                 "gtkx.config.ts!",
-                "elements.ts"
+                "elements.ts",
+                "tests/native/fixtures/*.ts"
             ]
         },
         "packages/gl": {

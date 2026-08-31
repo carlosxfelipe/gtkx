@@ -6,6 +6,7 @@ import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
+import { declaredTypeNames, type GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
@@ -107,13 +108,6 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     context.declare({
         name: makerName(className),
         code: renderInterfaceMaker(context, iface, className, callables),
-    });
-
-    appendInterfaceRegistration(context, {
-        className,
-        makerName: makerName(className),
-        gtypeExpr,
-        layout: renderInterfaceLayout(context, iface, callables),
     });
 };
 
@@ -257,13 +251,13 @@ const appendInterfaceTypes = (
 ): string | undefined => {
     const typeCode = renderInterfaceType(context, iface, className, callables);
     context.declare({ name: className, code: typeCode, owner: iface.name });
-    const implType = renderInterfaceImplType(context, iface, className);
+    const implName = implTypeName(context.namespace, className);
+    const implType = renderInterfaceImplType(context, iface, className, implName);
 
     if (implType === undefined) {
         return undefined;
     }
 
-    const implName = implTypeName(className);
     context.declare({ name: implName, code: implType, owner: iface.name });
 
     return implName;
@@ -313,13 +307,22 @@ const renderInterfaceType = (
     )}`;
 };
 
-const implTypeName = (className: string): string => `${className}Impl`;
+const implTypeName = (namespace: GirNamespace, className: string): string => {
+    const taken = declaredTypeNames(namespace);
+    let name = `${className}Impl`;
 
-const implTypeNote = (className: string): string =>
+    while (taken.has(name)) {
+        name += "Impl";
+    }
+
+    return name;
+};
+
+const implTypeNote = (className: string, implName: string): string =>
     [
         `Implementer side of \`${className}\`: the vtable slots a class fills to adopt the interface.`,
         "",
-        `Declare it with \`implements ${implTypeName(className)}\` on a class passed to \`registerClass\``,
+        `Declare it with \`implements ${implName}\` on a class passed to \`registerClass\``,
         `with \`${className}\` in \`implements\`. The interface's methods, properties, and signals come from`,
         "GLib dispatch, so they are not part of this type.",
         "",
@@ -337,7 +340,7 @@ const implPrerequisiteRefs = (context: ModuleContext, iface: GirClass): string[]
             continue;
         }
 
-        const name = implTypeName(sanitizeTypeIdentifier(prerequisite.klass.name));
+        const name = implTypeName(prerequisite.namespace, sanitizeTypeIdentifier(prerequisite.klass.name));
         refs.push(context.qualify(prerequisite.namespaceName, name));
     }
 
@@ -357,6 +360,7 @@ const renderInterfaceImplType = (
     context: ModuleContext,
     iface: GirClass,
     className: string,
+    implName: string,
 ): string | undefined => {
     const members = interfaceVfuncMembers(context, iface, "requirement");
 
@@ -364,10 +368,14 @@ const renderInterfaceImplType = (
         return undefined;
     }
 
-    return `${renderJsDoc(iface.doc, implTypeNote(className), annotationSpec(iface.annotations))}${renderBracedOrEmpty(
-        `export interface ${implTypeName(className)}${implTypeExtends(context, iface)}`,
+    const doc = renderJsDoc(iface.doc, implTypeNote(className, implName), annotationSpec(iface.annotations));
+
+    const body = renderBracedOrEmpty(
+        `export interface ${implName}${implTypeExtends(context, iface)}`,
         members.join("\n"),
-    )}`;
+    );
+
+    return `${doc}${body}`;
 };
 
 const collectMethodMembers = (options: MethodMemberOptions): string[] => {
@@ -439,16 +447,30 @@ const renderInterfaceClass = (
         members.push(gtypeMemberDeclaration(context), renderInterfaceHasInstance(context, className, gtypeExpr));
     }
 
-    members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));
+    members.push(
+        renderInterfaceGuard(context, className),
+        ...renderStaticHead(context, callables, className),
+        renderInterfaceBrand(context, implRef),
+    );
     const head = localName === undefined ? `export abstract class ${className}` : `abstract class ${localName}`;
 
     return renderBracedOrEmpty(head, members.join("\n\n"));
 };
 
-const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {
-    context.addRuntimeTypeImport("Interface");
+const renderInterfaceGuard = (context: ModuleContext, className: string): string => {
+    const qualified = `${context.namespace.name}.${className}`;
 
-    return `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: Interface<${implRef}>["__impl__"];`;
+    const message =
+        `Cannot construct ${qualified} with new: an interface describes what a class implements, ` +
+        "so it has no instances of its own.";
+
+    return renderBlock("constructor()", `throw new globalThis.Error(${sourceStringLiteral(message)});`);
+};
+
+const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {
+    const local = context.addRuntimeTypeImport("Interface");
+
+    return `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ${local}<${implRef}>["__impl__"];`;
 };
 
 const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {

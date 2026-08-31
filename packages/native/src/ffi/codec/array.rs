@@ -7,7 +7,7 @@ use item::ItemCodec;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec};
+use crate::ffi::codec::{Codec, FloatCodec, lossless_f64};
 use crate::value::TypedView;
 
 mod byte_array;
@@ -28,6 +28,7 @@ pub struct ArrayCodec {
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
     pub(crate) caller_allocated: bool,
+    pub(crate) zero_terminated: bool,
     pub(crate) container: ArrayContainerCodec,
 }
 
@@ -51,8 +52,18 @@ impl ArrayCodec {
             element_size,
             is_bytes,
             caller_allocated: false,
+            zero_terminated: false,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
+    }
+
+    /// Marks a length-bounded array whose GIR also declares `zero-terminated=1`. The callee takes
+    /// its count from the length argument but may still walk to the terminating zero element, so
+    /// the encoded buffer carries one zero element past the declared length.
+    #[must_use]
+    pub fn zero_terminated(mut self) -> Self {
+        self.zero_terminated = true;
+        self
     }
 
     /// Marks the array as a caller-allocated out parameter: the runtime allocates the buffer the
@@ -74,7 +85,8 @@ impl ArrayCodec {
         let Some(extent) = self.container.fixed_extent() else {
             bail!("A caller-allocated array descriptor needs a fixed size");
         };
-        Ok(Some(self.element_stride()? * extent))
+        let slots = extent + usize::from(self.zero_terminated);
+        Ok(Some(self.element_stride()? * slots))
     }
 
     pub(crate) fn is_length_bounded(&self) -> bool {
@@ -220,14 +232,28 @@ trait ArrayKindEncoder {
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash>;
 
+    /// Whether this container holds one pointer per slot, so that a whole-number element is
+    /// packed into the slot itself rather than into a contiguous buffer of its own width.
+    fn holds_pointer_slots(&self) -> bool {
+        false
+    }
+
+    /// Packs the elements into the container's own pointer-sized slots, and is only called
+    /// when `holds_pointer_slots` reports that the container has them.
     fn encode_pointer_words(
         &self,
-        _kind: BigIntCodec,
-        _array: &[Unknown<'_>],
+        _words: Vec<*mut c_void>,
         _ownership: Ownership,
-    ) -> Option<anyhow::Result<ffi::Stash>> {
-        None
+    ) -> anyhow::Result<ffi::Stash> {
+        unreachable!("a container without pointer slots is never asked to fill them")
     }
+}
+
+/// Packs a whole number into a pointer-sized slot the way `GINT_TO_POINTER` does, keeping the
+/// sign so that a negative element survives the round trip through a `GList` node.
+#[allow(clippy::cast_possible_truncation)]
+fn pointer_word(value: f64) -> *mut c_void {
+    value as isize as *mut c_void
 }
 
 fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
@@ -410,7 +436,7 @@ impl ArrayCodec {
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
-        self.encode_items_with_terminator(env, encoder, array, false)
+        self.encode_items_with_terminator(env, encoder, array, self.zero_terminated)
     }
 
     fn encode_zero_terminated_items(
@@ -433,6 +459,22 @@ impl ArrayCodec {
         Ok(numbers)
     }
 
+    fn finish_scalars<T>(
+        &self,
+        encoder: &dyn ArrayKindEncoder,
+        items: Vec<T>,
+        word: impl Fn(&T) -> *mut c_void,
+        storage: impl FnOnce(Vec<T>) -> anyhow::Result<ffi::StashStorage>,
+    ) -> anyhow::Result<ffi::Stash> {
+        if encoder.holds_pointer_slots() {
+            let words = items.iter().map(word).collect();
+
+            return encoder.encode_pointer_words(words, self.ownership);
+        }
+
+        self.finish_scalar_storage(storage(items)?)
+    }
+
     fn finish_scalar_storage(&self, storage: ffi::StashStorage) -> anyhow::Result<ffi::Stash> {
         if self.ownership.is_borrowed() {
             return Ok(ffi::Stash::Storage(storage));
@@ -452,15 +494,34 @@ impl ArrayCodec {
         zero_terminated: bool,
     ) -> anyhow::Result<ffi::Stash> {
         match self.item_codec("array")? {
-            ItemCodec::Integer(kind) => self.finish_scalar_storage(kind.checked_to_stash_storage(
-                &Self::extract_terminated_numbers(array, zero_terminated)?,
-            )?),
-            ItemCodec::EnumFlags(kind) => self.finish_scalar_storage(
-                kind.to_stash_storage(&Self::extract_terminated_numbers(array, zero_terminated)?),
-            ),
+            ItemCodec::Integer(kind) => {
+                let numbers = Self::extract_terminated_numbers(array, zero_terminated)?;
+                for (i, &value) in numbers.iter().enumerate() {
+                    kind.checked_to_stash(value)
+                        .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
+                }
+
+                self.finish_scalars(
+                    encoder,
+                    numbers,
+                    |&value| pointer_word(value),
+                    |numbers| kind.checked_to_stash_storage(&numbers),
+                )
+            }
+            ItemCodec::EnumFlags(kind) => {
+                let numbers = Self::extract_terminated_numbers(array, zero_terminated)?;
+
+                self.finish_scalars(
+                    encoder,
+                    numbers,
+                    |&value| pointer_word(value),
+                    |numbers| Ok(kind.to_stash_storage(&numbers)),
+                )
+            }
             ItemCodec::BigInt(kind) => {
-                if let Some(result) = encoder.encode_pointer_words(kind, array, self.ownership) {
-                    return result;
+                if encoder.holds_pointer_slots() {
+                    return encoder
+                        .encode_pointer_words(kind.to_pointer_words(array)?, self.ownership);
                 }
 
                 let storage = if zero_terminated {
@@ -480,14 +541,26 @@ impl ArrayCodec {
                 if zero_terminated {
                     booleans.push(0);
                 }
-                self.finish_scalar_storage(booleans.into())
+
+                self.finish_scalars(
+                    encoder,
+                    booleans,
+                    |&value| pointer_word(f64::from(value)),
+                    |booleans| Ok(booleans.into()),
+                )
             }
             ItemCodec::Unichar => {
                 let mut codepoints = Self::extract_codepoints(array)?;
                 if zero_terminated {
                     codepoints.push(0);
                 }
-                self.finish_scalar_storage(codepoints.into())
+
+                self.finish_scalars(
+                    encoder,
+                    codepoints,
+                    |&value| pointer_word(f64::from(value)),
+                    |codepoints| Ok(codepoints.into()),
+                )
             }
             ItemCodec::String => {
                 let dup_items =
@@ -602,6 +675,11 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
+        if self.zero_terminated {
+            // The terminator cannot be written into the JavaScript buffer, so a zero-terminated
+            // array always hands the callee a copy carrying one zero element past the view.
+            return Ok(ffi::Stash::Storage(terminated_view_storage(view)));
+        }
         Ok(match encoding {
             ViewEncoding::Passthrough => ffi::Stash::Ptr(view.ptr()),
             ViewEncoding::Copy => ffi::Stash::Storage(owned_view_storage(view)),
@@ -620,7 +698,30 @@ impl ArrayCodec {
             };
         }
 
+        // A container whose nodes hold one pointer each stores a whole-number element in the
+        // slot itself, the way `GPOINTER_TO_INT` reads it back, rather than pointing at it.
+        if let Some(stash) = self.pointer_word_stash(item_ptr)? {
+            return self.item_codec.decode(env, &stash);
+        }
+
         self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr))
+    }
+
+    fn pointer_word_stash(&self, item_ptr: *mut c_void) -> anyhow::Result<Option<ffi::Stash>> {
+        let word = item_ptr as isize;
+
+        Ok(match ItemCodec::from_codec(&self.item_codec) {
+            Some(ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind)) => {
+                Some(kind.checked_to_stash(lossless_f64(word as i128, "list element")?)?)
+            }
+            Some(ItemCodec::Boolean) => Some(ffi::Stash::I32(i32::from(word != 0))),
+            Some(ItemCodec::Unichar) => {
+                Some(ffi::Stash::U32(u32::try_from(word).map_err(|_| {
+                    anyhow::anyhow!("List element {word} is not a valid Unicode code point")
+                })?))
+            }
+            _ => None,
+        })
     }
 
     fn decode_ptr_iter<'e>(

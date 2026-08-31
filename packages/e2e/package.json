@@ -1,12 +1,9 @@
 {
     "name": "@gtkx/e2e",
     "version": "0.0.0",
-    "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, and native FFI",
+    "description": "Internal integration tests covering the GTKX reconciler, runtime, and testing library",
     "private": true,
     "type": "module",
-    "scripts": {
-        "test:asan": "tsx ../../scripts/asan-e2e.ts"
-    },
     "devDependencies": {
         "@gtkx/cairo": "workspace:*",
         "@gtkx/config": "workspace:*",
@@ -23,31 +20,76 @@
     "nx": {
         "targets": {
             "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "test-fixtures"
+                ],
                 "options": {
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
                 }
             },
+            "test-fixtures": {
+                "dependsOn": [
+                    "@gtkx/utils:build"
+                ],
+                "cache": false
+            },
             "test:asan": {
+                "dependsOn": [
+                    "test-fixtures",
+                    "@gtkx/runtime:build",
+                    "@gtkx/utils:build"
+                ],
                 "cache": true,
                 "inputs": [
-                    "default",
-                    "^default",
-                    "{workspaceRoot}/rust-toolchain.toml",
-                    "{workspaceRoot}/scripts/asan-e2e.ts",
-                    "{workspaceRoot}/scripts/rust-nightly.ts"
+                    "nodeTests"
                 ],
-                "outputs": [],
+                "outputs": []
+            },
+            "test": {
                 "dependsOn": [
+                    "test-fixtures",
+                    "@gtkx/native:build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "nodeTests"
+                ],
+                "options": {
+                    "command": "vitest run && vitest run --config tests/native/vitest.config.ts"
+                }
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "build",
+                    "^typecheck",
                     "gtkx:codegen",
-                    "@gtkx/vitest:build",
-                    "@gtkx/cairo:build",
-                    "@gtkx/cli:build",
-                    "@gtkx/components:build",
-                    "@gtkx/css:build",
-                    "@gtkx/gl:build"
+                    "test-fixtures"
                 ]
             }
+        },
+        "namedInputs": {
+            "nodeTests": [
+                "default",
+                "{workspaceRoot}/packages/native/src/**/*",
+                "{workspaceRoot}/packages/native/build.rs",
+                "{workspaceRoot}/packages/native/Cargo.toml",
+                "{workspaceRoot}/packages/native/Cargo.lock",
+                "{workspaceRoot}/rust-toolchain.toml",
+                "{workspaceRoot}/scripts/native-test-fixtures.ts",
+                "{workspaceRoot}/scripts/asan-native.ts",
+                "{workspaceRoot}/scripts/rust-nightly.ts",
+                "{workspaceRoot}/packages/vitest/src/**/*",
+                "{workspaceRoot}/packages/codegen/src/**/*",
+                "{workspaceRoot}/packages/runtime/src/**/*",
+                "{workspaceRoot}/packages/utils/src/**/*"
+            ]
         }
+    },
+    "scripts": {
+        "test:asan": "tsx ../../scripts/asan-native.ts",
+        "test-fixtures": "tsx ../../scripts/native-test-fixtures.ts"
     }
 }

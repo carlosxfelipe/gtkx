@@ -4,7 +4,7 @@ use glib::{self};
 
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
-use crate::handle::{Boxed, BoxedFreeFn, Handle};
+use crate::handle::{Boxed, BoxedFreeFn, Handle, HandleClass};
 use crate::host::error_reporter::ReportErr as _;
 
 const POINTER_TYPE: &str = "it is registered as a plain pointer type rather than a boxed one, so \
@@ -157,7 +157,9 @@ impl BoxedCodec {
                 self.type_name
             )
         };
-        let src_ptr = value::handle_ptr(value, "Boxed field write")?;
+        let src_ptr = value::handle_ptr_checked(value, "Boxed field write", |handle| {
+            Encoder::check_instance(self, handle)
+        })?;
         if src_ptr.is_null() {
             bail!(
                 "Cannot write null into the inline boxed field '{}'",
@@ -194,6 +196,28 @@ impl BoxedCodec {
 impl Encoder for BoxedCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Boxed object"
+    }
+
+    fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !matches!(
+                handle.class(),
+                HandleClass::Object | HandleClass::Fundamental
+            ),
+            "Expected a boxed value of type {}, got a {:?} handle",
+            self.type_name,
+            handle.class()
+        );
+
+        let (Some(expected), Some(actual)) = (self.type_()?, handle.boxed_type()) else {
+            return Ok(());
+        };
+        anyhow::ensure!(
+            actual.is_a(expected),
+            "Expected a boxed value of type {expected}, got {actual}"
+        );
+
+        Ok(())
     }
 
     fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
@@ -288,13 +312,16 @@ impl PtrWriter for BoxedCodec {
             return self.write_inline(slot, value);
         }
         let Some(type_) = self.type_()?.filter(|type_| is_boxed_type(*type_)) else {
-            return write_object_ptr(slot, value, "Boxed field write");
+            return write_object_ptr(slot, value, "Boxed field write", |handle| {
+                Encoder::check_instance(self, handle)
+            });
         };
         if self.ownership.is_borrowed() {
             return store_acquired_slot(
                 slot,
                 value,
                 "Boxed field write",
+                |handle| Encoder::check_instance(self, handle),
                 |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
                 Some(ffi::ReleaseKind::BoxedFree(type_)),
             );
@@ -304,6 +331,7 @@ impl PtrWriter for BoxedCodec {
             value,
             init,
             "Boxed field write",
+            |handle| Encoder::check_instance(self, handle),
             |new_ptr| unsafe { Boxed::boxed_copy(type_, new_ptr) },
             |old_ptr| unsafe {
                 glib::gobject_ffi::g_boxed_free(type_.into_glib(), old_ptr);

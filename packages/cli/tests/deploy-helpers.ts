@@ -65,7 +65,7 @@ const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const STAGE_PREFIX = "stage/";
 const BINARY_NAME = "gtkx-cli-deploy";
 const MODULE_DIR = `/run/build/${BINARY_NAME}`;
-const NODE_EXTENSION_DIR = "/usr/lib/sdk/node24";
+const NODE_EXTENSION_DIR = "/usr/lib/sdk/node26";
 const NODE_EXTENSION_PATH = `${NODE_EXTENSION_DIR}/bin`;
 const APPEND_PATH = `${MODULE_DIR}/flatpak-pnpm:${NODE_EXTENSION_PATH}`;
 const PNPM_VERSION = "11.22.0";
@@ -281,7 +281,6 @@ const COPYRIGHT_PATH = join("overlay", "deb", "share", "doc", BINARY_NAME, "copy
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NOTICE_TARGETS = ["appimage", "flatpak", "rpm"];
 const BUILD_METADATA = "gtkx-schemas.json";
-const LEGACY_PACKAGES_METADATA = "gtkx-packages.json";
 const NODE_STANZA = `Files: lib/${BINARY_NAME}/node`;
 const NATIVE_STANZA = `Files: lib/${BINARY_NAME}/gtkx.node`;
 const BUNDLE_STANZA = `Files: lib/${BINARY_NAME}/bundle.mjs`;
@@ -795,7 +794,6 @@ export {
     HELPER_PACKAGE_PATH,
     HELPER_SCRIPT,
     HELPER_SOURCE,
-    LEGACY_PACKAGES_METADATA,
     LIBRARIES_INVENTORY,
     LICENSE_INSTALL,
     LOCALE_INSTALL,

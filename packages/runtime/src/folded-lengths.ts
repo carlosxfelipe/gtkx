@@ -1,4 +1,5 @@
 import type { Descriptor } from "@gtkx/native";
+import { getOrInsert } from "@gtkx/utils";
 
 type LengthSource = { kind: "return" } | { kind: "outArg"; argIndex: number };
 type LengthSources = Map<number, LengthSource[]>;
@@ -28,15 +29,7 @@ const addLengthSource = (sources: LengthSources, index: number | undefined, sour
         return;
     }
 
-    const existing = sources.get(index);
-
-    if (existing === undefined) {
-        sources.set(index, [source]);
-
-        return;
-    }
-
-    existing.push(source);
+    getOrInsert(sources, index, () => []).push(source);
 };
 
 const addOutArgLengthSources = (sources: LengthSources, spec: FoldedLengthSpec): void => {
@@ -52,6 +45,27 @@ const addOutArgLengthSources = (sources: LengthSources, spec: FoldedLengthSpec):
     }
 };
 
+const foldedLengthArgIndices = (spec: FoldedLengthSpec): ReadonlySet<number> => {
+    const indices: Set<number> = new Set();
+
+    const add = (declaredIndex: number | undefined): void => {
+        const argIndex = effectiveArgIndex(declaredIndex, spec.userDataIndex);
+
+        if (argIndex !== undefined) {
+            indices.add(argIndex);
+        }
+    };
+
+    add(sizedArrayLengthIndex(spec.returnDescriptor));
+
+    for (const descriptor of spec.argDescriptors) {
+        add(sizedArrayLengthIndex(descriptor));
+        add(outArgLengthIndex(descriptor));
+    }
+
+    return indices;
+};
+
 const foldedLengthSources = (spec: FoldedLengthSpec): LengthSources => {
     const sources: LengthSources = new Map();
     const returnLengthIndex = effectiveArgIndex(sizedArrayLengthIndex(spec.returnDescriptor), spec.userDataIndex);
@@ -61,4 +75,4 @@ const foldedLengthSources = (spec: FoldedLengthSpec): LengthSources => {
     return sources;
 };
 
-export { foldedLengthSources, type LengthSource, type LengthSources };
+export { foldedLengthArgIndices, foldedLengthSources, type LengthSource, type LengthSources };

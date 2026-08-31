@@ -109,6 +109,18 @@ impl Drop for FieldStore {
     }
 }
 
+/// What a handle references, so a codec can reject a value of the wrong shape before its pointer
+/// reaches C. `Opaque` is a handle over memory whose shape the handle does not record — a borrowed
+/// pointer, or a field aliasing its owner — and matches anything.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HandleClass {
+    Object,
+    Boxed,
+    Fundamental,
+    Struct,
+    Opaque,
+}
+
 enum HandleKind {
     Object {
         ptr: Cell<*mut c_void>,
@@ -282,6 +294,38 @@ impl Handle {
         }
     }
 
+    /// What kind of instance the handle references, for a codec deciding whether the value it was
+    /// handed is one it can marshal at all.
+    #[must_use]
+    pub fn class(&self) -> HandleClass {
+        match &self.inner.kind {
+            HandleKind::Object { .. } => HandleClass::Object,
+            HandleKind::Boxed(_) => HandleClass::Boxed,
+            HandleKind::Fundamental(_) => HandleClass::Fundamental,
+            HandleKind::Struct(_) => HandleClass::Struct,
+            HandleKind::Borrowed(_) | HandleKind::Field { .. } => HandleClass::Opaque,
+        }
+    }
+
+    /// The `GType` a boxed handle was built with, or `None` for a handle that records none.
+    #[must_use]
+    pub fn boxed_type(&self) -> Option<glib::Type> {
+        match &self.inner.kind {
+            HandleKind::Boxed(boxed) => boxed.type_(),
+            _ => None,
+        }
+    }
+
+    /// The release function a fundamental handle holds, which names the fundamental family its
+    /// instance belongs to without reading anything through the pointer.
+    #[must_use]
+    pub fn fundamental_unref_fn(&self) -> Option<UnrefFn> {
+        match &self.inner.kind {
+            HandleKind::Fundamental(fundamental) => fundamental.unref_fn(),
+            _ => None,
+        }
+    }
+
     #[must_use]
     pub fn as_gobject_ptr(&self) -> Option<*mut glib::gobject_ffi::GObject> {
         let HandleKind::Object { ptr, .. } = &self.inner.kind else {
@@ -372,11 +416,6 @@ impl Handle {
                 }
             }
         }
-    }
-
-    #[must_use]
-    pub fn ptr_as_usize(&self) -> usize {
-        self.as_ptr() as usize
     }
 
     #[must_use]

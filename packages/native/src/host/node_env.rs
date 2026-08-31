@@ -64,7 +64,21 @@ pub fn install(env: Env) -> napi::Result<()> {
     unsafe { install_dispatch_context(raw) }?;
     NODE_ENV.set(raw);
 
+    // Registered before the runloop's own hook and therefore, since Node drains them
+    // last-registered-first, run after it: nothing may reach the async context or the resource
+    // reference once the environment they belong to is gone.
+    env.add_env_cleanup_hook((), |()| uninstall())?;
+
     Ok(())
+}
+
+/// Forgets the environment this thread was installed on, for a thread whose environment is going
+/// away. Only thread-locals are cleared: a cleanup hook must not call into JavaScript, and Node
+/// reclaims the async context and the resource reference itself.
+fn uninstall() {
+    NODE_ENV.set(std::ptr::null_mut());
+    ASYNC_CONTEXT.set(std::ptr::null_mut());
+    RESOURCE_REF.set(std::ptr::null_mut());
 }
 
 pub fn is_installed_on_current_thread() -> bool {
@@ -158,41 +172,5 @@ pub fn raise_fatal(message: &str) {
         }
         sys::napi_fatal_exception(raw, napi::JsError::from(error).into_value(raw));
         sys::napi_close_handle_scope(raw, handle_scope);
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn run_installed<R>(f: impl FnOnce() -> R) -> R {
-    test_support::run(|| {
-        install(test_support::fake_env()).expect("installing the local node env should succeed");
-        f()
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_environment_is_only_visible_on_its_install_thread() {
-        run_installed(|| {
-            assert!(is_installed_on_current_thread());
-            assert!(try_env().is_some());
-
-            let observed_off_thread = std::thread::spawn(|| {
-                (
-                    is_installed_on_current_thread(),
-                    try_env().is_none(),
-                    std::panic::catch_unwind(|| {
-                        let _ = env();
-                    })
-                    .is_err(),
-                )
-            })
-            .join()
-            .expect("the probe thread should not crash");
-
-            assert_eq!(observed_off_thread, (false, true, true));
-        });
     }
 }

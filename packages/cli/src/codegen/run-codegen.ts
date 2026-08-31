@@ -13,7 +13,7 @@ import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
-import { emitI18nTypes } from "../i18n/types.js";
+import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
 import { upsertAgentRules } from "../internal/agent-rules.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
@@ -40,9 +40,9 @@ type RunCodegenResult = {
     namespaces: number;
     intrinsicElements: number;
     duration: number;
-    girPath?: string[] | undefined;
-    configFile?: string | undefined;
-    libraries?: string[] | undefined;
+    girPath: string[];
+    configFile: string;
+    libraries: string[];
     reference?: ReferenceResult | undefined;
 };
 
@@ -59,14 +59,6 @@ type EnsureGeneratedOptions = {
     shouldAnnounce?: boolean;
     mode?: string;
     shouldPreserveI18nMetadata?: boolean | undefined;
-};
-
-type RunOptionsInput = {
-    root: string;
-    mode: string | undefined;
-    inputs: CodegenInputs | null;
-    resolved: LoadedConfig;
-    shouldPreserveI18nMetadata: boolean | undefined;
 };
 
 const GIR_PATH_MISSING_MESSAGE =
@@ -118,20 +110,13 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     libraries: [],
 });
 
-const regeneratedStorePaths = (store: CodegenStore): string[] => {
-    if (store.react === null) {
-        return [store.giStoreDir, store.giLinkDir];
-    }
-
-    return [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir];
-};
-
 const clearGeneratedStores = (store: CodegenStore): void => {
-    removeStores(regeneratedStorePaths(store));
+    removeStores(
+        store.react === null
+            ? [store.giStoreDir, store.giLinkDir]
+            : [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir],
+    );
 };
-
-const resolveLoadedConfig = async (options: RunCodegenOptions, cwd: string): Promise<LoadedConfig> =>
-    options.resolved ?? (await loadConfig(cwd, { mode: options.mode }));
 
 const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config): PreparedCodegen => {
     const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
@@ -147,7 +132,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
-    const { config, configFile } = await resolveLoadedConfig(options, cwd);
+    const { config, configFile } = options.resolved ?? (await loadConfig(cwd, { mode: options.mode }));
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
@@ -169,7 +154,10 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     });
 
     const reference = await writeReference({ root: cwd, config, girPath, libraries, isForced });
-    syncAgentRules(cwd, config);
+
+    if (isAgentRulesEnabled(config)) {
+        upsertAgentRules(cwd);
+    }
 
     return {
         isRegenerated: result.isRegenerated,
@@ -183,12 +171,6 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     };
 };
 
-const syncAgentRules = (root: string, config: Config): void => {
-    if (isAgentRulesEnabled(config)) {
-        upsertAgentRules(root);
-    }
-};
-
 const syncI18n = async (
     root: string,
     applicationId: string,
@@ -197,16 +179,16 @@ const syncI18n = async (
     const project = resolveCatalogProject(root, applicationId);
 
     if (project === null) {
-        emitI18nTypes(root, [], false);
+        clearI18nTypes(root);
 
         return;
     }
 
     const srcDir = join(root, "src");
     const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
-    const catalog = await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
+    await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
     synchronizeCatalogs(project);
-    emitI18nTypes(root, catalog.messages);
+    await emitI18nTypes(root);
 };
 
 const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
@@ -237,20 +219,6 @@ const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: Codegen
     }
 };
 
-const getRunOptions = ({
-    root,
-    mode,
-    inputs,
-    resolved,
-    shouldPreserveI18nMetadata,
-}: RunOptionsInput): RunCodegenOptions => {
-    if (inputs === null) {
-        return { cwd: root, mode, resolved, shouldPreserveI18nMetadata };
-    }
-
-    return { cwd: root, mode, inputs, resolved, shouldPreserveI18nMetadata };
-};
-
 const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
     options.shouldAnnounce === true && process.env.GTKX_DISABLE_PREFLIGHT === "1";
 
@@ -271,13 +239,13 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     maybeAnnounceStale(options.shouldAnnounce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
 
-    const result = await runCodegen(getRunOptions({
-        root: context.root,
+    const result = await runCodegen({
+        cwd: context.root,
         mode: options.mode,
-        inputs,
         resolved,
         shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
-    }));
+        ...(inputs !== null && { inputs }),
+    });
 
     return result.isRegenerated;
 };

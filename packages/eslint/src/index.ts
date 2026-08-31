@@ -22,14 +22,14 @@ type PublicApi = {
     modules: { path: string }[];
 };
 
-const SOURCES = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"];
-const JS_SOURCES = ["**/*.{js,jsx,mjs,cjs}"];
-const TS_SOURCES = ["**/*.{ts,tsx,mts,cts}"];
+const SOURCES = ["**/*.{ts,tsx,mts,js,jsx,mjs}"];
+const JS_SOURCES = ["**/*.{js,jsx,mjs}"];
+const TS_SOURCES = ["**/*.{ts,tsx,mts}"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
 const MANIFESTS = ["packages/*/package.json"];
-const TOOLING = ["**/*.config.{ts,mts,cts,js,mjs,cjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
+const TOOLING = ["**/*.config.{ts,mts,js,mjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
 const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
 const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
 const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];
@@ -170,6 +170,10 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@stylistic/jsx-curly-brace-presence": ["error", { props: "never", children: "never" }],
     "@stylistic/quotes": ["error", "double", { avoidEscape: true, allowTemplateLiterals: "never" }],
     "@stylistic/operator-linebreak": ["error", "after", { overrides: { "?": "before", ":": "before" } }],
+    "@stylistic/padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "*", next: "return" },
+    ],
     "@typescript-eslint/array-type": ["error", { default: "array" }],
     "@typescript-eslint/consistent-generic-constructors": ["error", "type-annotation"],
     "@typescript-eslint/consistent-type-definitions": ["error", "type"],
@@ -184,12 +188,9 @@ const SOURCE_RULES: Linter.RulesRecord = {
     curly: ["error", "all"],
     "gtkx/accessor-naming": "error",
     "gtkx/brand-naming": "error",
-    "gtkx/cognitive-complexity": ["error", { max: 5 }],
-    "gtkx/module-section-order": "error",
     "gtkx/no-comments": "error",
     "gtkx/no-inline-exports": "error",
     "gtkx/no-library-prefix": "error",
-    "gtkx/statement-padding": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
     "perfectionist/sort-exports": [
@@ -204,7 +205,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "react-hooks/exhaustive-deps": "error",
     "react-hooks/incompatible-library": "error",
     "react-hooks/unsupported-syntax": "error",
-    "sonarjs/cognitive-complexity": "off",
+    "sonarjs/cognitive-complexity": ["error", 5],
     "sonarjs/deprecation": "off",
     "sonarjs/prefer-read-only-props": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],

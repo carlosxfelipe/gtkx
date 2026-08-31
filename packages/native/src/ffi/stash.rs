@@ -8,8 +8,9 @@ use crate::ffi::closure::{ClosureData, ClosureState};
 mod storage;
 
 pub use storage::{
-    CallerAllocation, GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, ListData, ListNode,
-    ListOps, ListPayload, PendingTransfer, ReleaseKind, StashData, StashStorage, build_list,
+    CallerAllocation, GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, HashTableData, ListData,
+    ListNode, ListOps, ListPayload, PendingTransfer, ReleaseKind, StashData, StashStorage,
+    build_list,
 };
 
 #[derive(Debug)]
@@ -82,20 +83,16 @@ impl CallbackValue {
         self.pending_transfer.take();
     }
 
+    /// Keeps the closure reachable for the life of the process, for a callback whose C side
+    /// never hands back anything that could identify it for release.
+    pub fn retain_forever(&self) {
+        if let Some(state_ptr) = self.held_state {
+            ClosureState::retain_forever(state_ptr);
+        }
+    }
+
     pub fn closure_data(&self) -> Option<&ClosureData> {
         self.held_state.map(|state| unsafe { (*state).data_ref() })
-    }
-
-    pub fn fn_ptr(&self) -> *mut c_void {
-        self.fn_ptr
-    }
-
-    pub fn state_ptr(&self) -> *mut c_void {
-        self.state_ptr
-    }
-
-    pub fn destroy_ptr(&self) -> Option<*mut c_void> {
-        self.destroy_ptr
     }
 }
 
