@@ -20,13 +20,9 @@ type GirRecord = {
     glibTypeName: string | undefined;
     /** Name of the function registering the record's GType, such as `"gtk_text_iter_get_type"`. */
     glibGetType: string | undefined;
-    /** Name of the function taking a reference, for reference-counted records. */
-    glibRefFunc: string | undefined;
-    /** Name of the function dropping a reference, for reference-counted records. */
-    glibUnrefFunc: string | undefined;
-    /** Name of the function duplicating an instance, used when the record has no ref function. */
+    /** Name of the function duplicating an instance, which for a refcounted record takes a reference. */
     copyFunc: string | undefined;
-    /** Name of the function releasing an instance, used when the record has no unref function. */
+    /** Name of the function releasing an instance, which for a refcounted record drops a reference. */
     freeFunc: string | undefined;
     /** Whether the struct is only ever handled behind a pointer, so its layout stays hidden. */
     disguised: boolean;
@@ -58,8 +54,6 @@ const recordFromNode = (
     cType: attr(node, "c:type"),
     glibTypeName: attr(node, "glib:type-name"),
     glibGetType: attr(node, "glib:get-type"),
-    glibRefFunc: attr(node, "glib:ref-func"),
-    glibUnrefFunc: attr(node, "glib:unref-func"),
     copyFunc: attr(node, "copy-function"),
     freeFunc: attr(node, "free-function"),
     disguised: isAttrTrue(node, "disguised"),
@@ -74,4 +68,11 @@ const recordFromNode = (
 
 const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
 
-export { recordFromNode, isVtableRecord, type GirRecord };
+const INTERN_GTYPE = "intern";
+
+const isInternRecord = (record: GirRecord): boolean => record.glibGetType === INTERN_GTYPE;
+
+const isBoxedRecord = (record: GirRecord): record is GirRecord & { glibGetType: string } =>
+    record.glibGetType !== undefined && !isInternRecord(record);
+
+export { recordFromNode, isVtableRecord, isBoxedRecord, isInternRecord, type GirRecord };
