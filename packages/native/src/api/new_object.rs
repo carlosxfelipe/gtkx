@@ -10,6 +10,7 @@ use crate::api::{handle_newtype, native_result, type_from_bigint};
 use crate::ffi::codec::{
     Ownership, acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
+use crate::host::log_writer::CriticalTrap;
 use crate::value::{pending_wrapper, wrapper};
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
@@ -68,10 +69,20 @@ impl ConstructProperties {
     }
 }
 
+/// Everything here speaks `GObject`: the constructor, the construction reference and the wrapper
+/// the instance carries. A classed, instantiatable type is not enough, since a `GParamSpec` is both
+/// and its class is not a `GObjectClass`, so reading properties out of it is a type confusion.
 fn ensure_instantiable(type_: glib::Type) -> Result<()> {
-    let is_abstract = unsafe {
-        gobject_ffi::g_type_test_flags(type_.into_glib(), gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0
-    };
+    if !type_.is_a(glib::Type::OBJECT) {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: type '{type_}' does not derive from GObject"),
+        ));
+    }
+
+    let raw = type_.into_glib();
+    let is_abstract =
+        unsafe { gobject_ffi::g_type_test_flags(raw, gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0 };
 
     if is_abstract {
         return Err(Error::new(
@@ -83,6 +94,38 @@ fn ensure_instantiable(type_: glib::Type) -> Result<()> {
     Ok(())
 }
 
+/// Rejects a construct property the type does not declare before anything is built. Left to
+/// `g_object_new_with_properties`, an unknown name only logs a critical and is then ignored, so the
+/// caller would receive an instance quietly missing the state it asked for.
+fn ensure_properties_exist(type_: glib::Type, properties: &ConstructProperties) -> Result<()> {
+    let class = unsafe { gobject_ffi::g_type_class_ref(type_.into_glib()) };
+
+    if class.is_null() {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: type '{type_}' carries no class to look properties up in"),
+        ));
+    }
+
+    let missing = properties
+        .names
+        .iter()
+        .find(|name| {
+            unsafe { gobject_ffi::g_object_class_find_property(class.cast(), name.as_ptr()) }
+                .is_null()
+        })
+        .map(|name| name.to_string_lossy().into_owned());
+    unsafe { gobject_ffi::g_type_class_unref(class) };
+
+    match missing {
+        Some(name) => Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: '{type_}' has no property named '{name}'"),
+        )),
+        None => Ok(()),
+    }
+}
+
 unsafe fn construct(
     type_: glib::Type,
     properties: &ConstructProperties,
@@ -91,6 +134,7 @@ unsafe fn construct(
     let mut name_ptrs: Vec<*const c_char> =
         properties.names.iter().map(|name| name.as_ptr()).collect();
 
+    let trap = CriticalTrap::arm();
     let ptr = unsafe {
         gobject_ffi::g_object_new_with_properties(
             type_.into_glib(),
@@ -100,10 +144,15 @@ unsafe fn construct(
         )
     };
 
+    let critical = trap.disarm();
+
     if ptr.is_null() {
         return Err(Error::new(
             Status::GenericFailure,
-            format!("new_object: could not construct an instance of '{type_}'"),
+            critical.map_or_else(
+                || format!("new_object: could not construct an instance of '{type_}'"),
+                |critical| format!("new_object: {critical}"),
+            ),
         ));
     }
 
@@ -180,6 +229,7 @@ pub fn new_object<'env>(
     let type_ = type_from_bigint(&gtype, "new_object:")?;
     ensure_instantiable(type_)?;
     let properties = ConstructProperties::new(names, &values)?;
+    ensure_properties_exist(type_, &properties)?;
     let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
     let ptr = unsafe { construct(type_, &properties) }?;
 
