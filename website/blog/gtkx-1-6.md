@@ -4,10 +4,6 @@ description: "GTKX 1.6 gives coding agents project-specific rules, a generated G
 image: /og.png
 ---
 
-<script setup>
-import TreeShakingBenchmarks from "../.vitepress/theme/components/TreeShakingBenchmarks.vue";
-</script>
-
 # GTKX 1.6
 
 <p class="post-date">August 29, 2026</p>
@@ -73,13 +69,7 @@ Binding Adwaita changes generated types, package dependencies, and notices, but 
 
 ## Smaller production bundles
 
-Generated stores previously registered every class as soon as a namespace loaded, which made every binding a side effect the bundler had to retain. `future.v2TreeShaking` folds each registration and its metadata into the class definition that needs it. Rendered elements, classes used directly, and types referenced by their signatures remain; the rest can leave the production bundle.
-
-Across all six example applications, enabling the flag reduced their combined minified production JavaScript from 36.74 MB to 22.13 MB, a 39.8% reduction. Focused applications shed between 47.7% and 60.6%; GTK Demo dropped 10.6% because its large demo source payload and broad binding surface dominate the bundle. The measured median startup to the first mapped window was 5.3% to 30.0% lower in five examples, while Animations was effectively unchanged.
-
-<TreeShakingBenchmarks />
-
-Both variants start from the GTKX 1.6 source at commit `76c6292f`; only `future.v2TreeShaking` differs. Bundle size is the raw decimal size of the minified `dist/bundle.mjs`; the native addon, resources, and assets are unchanged and excluded. The startup builds add the same readiness handler to both variants. Startup was measured on an AMD Ryzen 7 9700X with Fedora 44, Node 24.19.0, GTK 4.22.4, libadwaita 1.9.3, and Weston 15.0.1. Each value is the median of 30 alternating fresh-process launches after five warm-ups per variant under one headless Weston compositor with Cairo software rendering. The timer runs from spawning Node to the primary application window's first `map` signal. These are warm-filesystem window-mapping measurements, not cold-disk startup, first painted frame, or WebKit network completion.
+Generated stores previously registered every class as soon as a namespace loaded, which made every binding a side effect the bundler had to retain. `future.v2TreeShaking` folds each registration and its metadata into the class definition that needs it. Rendered elements, classes used directly, and types referenced by their signatures remain; the rest can leave the production bundle. For a small application, that roughly halves the generated binding code it ships.
 
 The flag changes reachability rather than TypeScript types. A side-effect-only `import "@gtkx/gi/gtk"` still initializes the namespace but retains no class; import a value when its type must register. `GObject.typeFromName` follows GLib's normal contract and finds generated types that the process has registered, so code performing a lookup by name must retain the corresponding class. Development and tests keep the complete store and behave as before.
 
