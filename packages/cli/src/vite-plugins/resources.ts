@@ -5,6 +5,7 @@ import { error, info, isPathInside, isRecord, sortStrings, toPosixPath } from "@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { parseSync } from "vite";
+import { withExclusiveLoad } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { parseRuntimeImportsIn, type SourceImport, sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
@@ -1508,7 +1509,7 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
     },
 
     async transform(code, id) {
-        await reconcileImporter(this, state, id);
+        await withExclusiveLoad(state, () => reconcileImporter(this, state, id));
 
         return retainSideEffectIconImport(code, id);
     },

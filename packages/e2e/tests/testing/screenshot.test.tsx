@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkMenuButton, GtkPopover, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { act, render, screen, screenshot } from "@gtkx/testing";
+import { act, render, screen, screenshot, waitFor } from "@gtkx/testing";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -102,6 +102,9 @@ describe("screenshot", () => {
         expect(openedButton.width).toBe(closedButton.width);
         expect(openedButton.height).toBe(closedButton.height);
         await settle(() => popoverRef.current?.popdown());
+        await waitFor(() => {
+            expect(popoverRef.current?.getMapped()).toBe(false);
+        });
         const reclosed = await screenshot(window);
         expect(reclosed.data).toBe(closedWindow.data);
     });
