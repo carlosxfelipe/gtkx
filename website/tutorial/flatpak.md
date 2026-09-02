@@ -133,4 +133,4 @@ A reviewer reads your `finish-args` first. Rerun `--print-manifests` on every de
 
 ## Next
 
-Read the [complete source on GitHub](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial), or the [deploying guide](/guide/deploying) for the full `deploy` reference, then start your own with `npm create gtkx`.
+Read the [complete source on GitHub](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples/tutorial), or the [deploying guide](/guide/deploying) for the full `deploy` reference, then start your own with `npm create gtkx`.

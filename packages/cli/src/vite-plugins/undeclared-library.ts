@@ -15,11 +15,12 @@ type PluginState = {
 type GeneratedModule = {
     source: string;
     kind: string;
-    namespace: string | null;
+    namespace: string;
     importer: string;
 };
 
 const GENERATED_MODULE_PATTERN = /^@gtkx\/(gi|jsx)\/([a-z0-9]+)$/;
+const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["gtk", "adw"]);
 
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
@@ -36,10 +37,6 @@ const findGirIdentifier = (girPath: string[], namespace: string): string | undef
     discoverGirNamespaces(girPath).find((identifier) => getNamespace(identifier) === namespace);
 
 const parseGeneratedModule = (source: string, importer: string | undefined): GeneratedModule | null => {
-    if (source === "@gtkx/jsx") {
-        return { source, kind: "jsx", namespace: null, importer: importer ?? "the project's sources" };
-    }
-
     const matched = GENERATED_MODULE_PATTERN.exec(source);
     const kind = matched?.[1];
     const namespace = matched?.[2];
@@ -74,7 +71,7 @@ const hasStoreModule = (storeDir: string, exportKey: string): boolean => {
 };
 
 const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions): Error => {
-    const provided = generated.namespace === null ? "its index module" : `"${generated.namespace}"`;
+    const provided = `"${generated.namespace}"`;
 
     return new Error(
         `Cannot resolve "${generated.source}": the generated store in ${options.storeDir} does provide ` +
@@ -84,21 +81,22 @@ const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions
     );
 };
 
-const missingIndexError = (generated: GeneratedModule): Error =>
-    new Error(
-        `Cannot resolve "${generated.source}": the binding store has no index module. ` +
-        "Run gtkx codegen to regenerate the store.",
-    );
-
 const undeclaredLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
     const identifier = findGirIdentifier(girPath, namespace);
 
     if (identifier === undefined) {
         return new Error(
             `Cannot resolve "${source}": the binding store has no "${namespace}" module, and no ` +
-            `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, ` +
-            "install its gobject-introspection data package and add its GIR identifier to `libraries` in " +
-            "gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
+            `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install ` +
+            "its gobject-introspection data package. Gtk-4.0 and Adw-1 are bound by default; add only other " +
+            "GIR identifiers to `libraries` in gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
+        );
+    }
+
+    if (DEFAULT_LIBRARY_NAMESPACES.has(namespace)) {
+        return new Error(
+            `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
+            "The Gtk and Adwaita namespaces are bound by default; run gtkx dev or gtkx build again.",
         );
     }
 
@@ -110,14 +108,10 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
 
 const unresolvedModuleError = async (state: PluginState, generated: GeneratedModule): Promise<Error> => {
     const options = getStoreOptions(state.root, generated.kind);
-    const exportKey = generated.namespace === null ? "." : `./${generated.namespace}`;
+    const exportKey = `./${generated.namespace}`;
 
     if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
         return unreachableStoreError(generated, options);
-    }
-
-    if (generated.namespace === null) {
-        return missingIndexError(generated);
     }
 
     return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));

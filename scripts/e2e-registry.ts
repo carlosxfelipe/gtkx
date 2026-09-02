@@ -117,7 +117,7 @@ function verdaccioConfig(workDir: string): string {
             npmjs:
                 url: https://registry.npmjs.org/
                 maxage: 60m
-                cache: true
+                cache: false
         packages:
             '@gtkx/*':
                 access: $all
@@ -202,7 +202,9 @@ function registryEnv(userConfig: string, registryDir: string): NodeJS.ProcessEnv
         NPM_CONFIG_USERCONFIG: userConfig,
     };
 
+    delete env.GITHUB_ACTIONS;
     delete env.NPM_CONFIG_PROVENANCE;
+    delete env.npm_config_manage_package_manager_versions;
 
     return env;
 }

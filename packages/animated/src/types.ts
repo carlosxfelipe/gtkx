@@ -1,7 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type * as elements from "@gtkx/jsx";
 import type { FluidValue } from "@react-spring/shared";
-import type { ComponentPropsWithRef, ElementType, FunctionComponent, Ref } from "react";
+import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX, Ref } from "react";
 
 /** An array-valued prop whose items may each be a spring or an interpolation, such as mixed text children. */
 type AnimatedItems<T> = [Exclude<Extract<T, Iterable<unknown>>, string>] extends [never]
@@ -42,21 +41,20 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
 >;
 
 /**
- * The widget components of the generated `@gtkx/jsx` store, keyed by element name, each wrapped as
- * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
- * included.
+ * The generated JSX intrinsic elements, keyed by element name, as components accepting animated props.
+ * Only elements whose `ref` exposes a `Gtk.Widget` subclass are included.
  */
 type AnimatedElementMap = {
-    readonly [K in keyof typeof elements as (typeof elements)[K] extends Exclude<ElementType, string>
-        ? ComponentPropsWithRef<(typeof elements)[K]> extends { ref?: Ref<infer Instance> | undefined }
-            ? [NonNullable<Instance>] extends [never]
-                    ? never
-                    : NonNullable<Instance> extends Gtk.Widget
-                        ? K
-                        : never
-            : never
-        : never]: (typeof elements)[K] extends Exclude<ElementType, string>
-        ? AnimatedComponent<(typeof elements)[K]>
+    readonly [K in keyof JSX.IntrinsicElements as JSX.IntrinsicElements[K] extends {
+        ref?: Ref<infer Instance> | undefined;
+    }
+        ? [NonNullable<Instance>] extends [never]
+                ? never
+                : NonNullable<Instance> extends Gtk.Widget
+                    ? K
+                    : never
+        : never]: JSX.IntrinsicElements[K] extends object
+        ? FunctionComponent<AnimatedProps<JSX.IntrinsicElements[K]>>
         : never;
 };
 

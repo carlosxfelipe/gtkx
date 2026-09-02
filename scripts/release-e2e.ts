@@ -16,7 +16,6 @@ import { assertPublishedShape, type PackageManifest } from "./publish-manifest.j
 type ConsumerVariant = { appName: string; applicationId: string; isTypescript: boolean };
 
 type Packument = {
-    "dist-tags": { latest?: string };
     versions: Record<string, { dist: { tarball: string } }>;
 };
 
@@ -97,19 +96,14 @@ async function tarballUrl(name: string): Promise<string> {
     }
 
     const packument = (await response.json()) as Packument;
-    const latest = packument["dist-tags"].latest;
+    const releaseVersion = createGtkxVersion();
+    const release = packument.versions[releaseVersion];
 
-    if (latest === undefined) {
-        throw new Error(`Registry reports no latest version for ${name}`);
+    if (release === undefined) {
+        throw new Error(`Registry is missing the manifest for ${name}@${releaseVersion}`);
     }
 
-    const version = packument.versions[latest];
-
-    if (version === undefined) {
-        throw new Error(`Registry is missing the manifest for ${name}@${latest}`);
-    }
-
-    return version.dist.tarball;
+    return release.dist.tarball;
 }
 
 async function inspectTarball(
@@ -162,6 +156,13 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
 
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {
     const language = variant.isTypescript ? "TypeScript" : "JavaScript";
+    const scaffoldEnv: NodeJS.ProcessEnv = {
+        ...env,
+        GIT_AUTHOR_NAME: "GTKX Release E2E",
+        GIT_AUTHOR_EMAIL: "release-e2e@gtkx.dev",
+        GIT_COMMITTER_NAME: "GTKX Release E2E",
+        GIT_COMMITTER_EMAIL: "release-e2e@gtkx.dev",
+    };
 
     const scaffoldArgs = [
         "create",
@@ -180,8 +181,9 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
         scaffoldArgs.push("--no-typescript");
     }
 
-    await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env });
+    await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env: scaffoldEnv });
     const appDir = join(consumerRoot, variant.appName);
+    await runAsync("git", ["rev-parse", "--verify", "HEAD"], { cwd: appDir, env });
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });
     await verifyBuiltAppStarts(appDir);
 

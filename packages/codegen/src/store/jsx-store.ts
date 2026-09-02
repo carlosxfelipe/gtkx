@@ -21,21 +21,16 @@ const jsxPeerDependencies = (externalPackages: string[]): Record<string, string>
 const writeJsxStore = (params: WriteJsxStoreParams): void => {
     const { options, namespaces, metadata, externalPackages, rawFiles } = params;
 
-    const exportsMap: Record<string, unknown> = {
-        ".": subpathExport("index"),
+    const namespaceExports: Record<string, unknown> = {
         "./metadata": subpathExport("metadata"),
     };
 
     const files = [{ fileName: "metadata.ts", source: metadata }];
-    const indexExports: string[] = [];
 
     for (const { directory, source } of namespaces) {
         files.push({ fileName: `${directory}/${directory}.tsx`, source }, namespaceBarrel(directory));
-        exportsMap[`./${directory}`] = subpathExport(`${directory}/index`);
-        indexExports.push(`export * from "./${directory}/index.js";`);
+        namespaceExports[`./${directory}`] = subpathExport(`${directory}/index`);
     }
-
-    files.push({ fileName: "index.ts", source: `${indexExports.join("\n")}\n` });
 
     writeStore({
         storeDir: options.storeDir,
@@ -44,7 +39,7 @@ const writeJsxStore = (params: WriteJsxStoreParams): void => {
         manifest: buildManifest({
             name: "@gtkx/jsx",
             version: options.version,
-            exports: exportsMap,
+            exports: namespaceExports,
             sideEffects: false,
             peerDependencies: jsxPeerDependencies(externalPackages),
         }),
