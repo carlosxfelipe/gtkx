@@ -1,3 +1,4 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getInstanceType, registerClass } from "@gtkx/runtime";
@@ -143,6 +144,24 @@ test("on, once and off connect and remove handlers by function", () => {
     obj.emit("test");
     obj.emit("test");
     expect(seen).toEqual(["on", "once"]);
+});
+
+test("natural connect and collision-safe signal and property helpers remain independent", () => {
+    const socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP);
+    const address = Gio.InetSocketAddress.new(Gio.InetAddress.newLoopback(Gio.SocketFamily.IPV4), 9);
+    expect(socket.connect(address, null)).toBe(true);
+
+    const states: boolean[] = [];
+    const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {
+        states.push(GObject.getObjectProperty(socket, "blocking"));
+    });
+
+    GObject.setObjectProperty(socket, "blocking", false);
+    expect(states).toEqual([false]);
+    GObject.signalDisconnect(socket, handlerId);
+    GObject.setObjectProperty(socket, "blocking", true);
+    expect(states).toEqual([false]);
+    expect(socket.close()).toBe(true);
 });
 
 test("an object signal argument arrives as the very wrapper it was emitted with", () => {
@@ -441,7 +460,9 @@ test("a declared signal carries its handler's return value back to the emitter",
     const instance = new Shouting({});
     const heard: string[] = [];
     instance.connect("shout", (text) => {
-        heard.push(text);
+        if (typeof text === "string") {
+            heard.push(text);
+        }
 
         return 7;
     });
@@ -482,6 +503,11 @@ test("a class closure override only runs for the derived type", () => {
 
 test("connecting to or emitting a signal the type does not have throws", () => {
     const obj = new Regress.TestObj({});
+    const unsupported = {} as Regress.TestObj;
+    expect(() => GObject.signalConnect(unsupported, "test", spareHandler)).toThrow();
+    expect(() => {
+        GObject.signalEmit(unsupported, "test");
+    }).toThrow();
     // @ts-expect-error no-such-signal is not a TestObj signal
     expect(() => obj.connect("no-such-signal", spareHandler)).toThrow();
     // @ts-expect-error no-such-signal is not a TestObj signal

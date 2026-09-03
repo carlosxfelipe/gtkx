@@ -83,6 +83,11 @@ const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRend
         `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
 );
 
+const renderInstanceMethodOverload: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }) =>
+        `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
+);
+
 const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }, scope) =>
         finishFn === undefined
@@ -528,6 +533,7 @@ const renderPlainTypeMembers = (
 
 export {
     renderInstanceMethodSignature,
+    renderInstanceMethodOverload,
     renderClassInstanceMember,
     instanceMemberSpec,
     instanceScope,
@@ -540,6 +546,7 @@ export {
     renderPlainTypeMembers,
     staticMembers,
     type Callables,
+    constructorMemberName,
     type InstanceMemberRenderer,
     type InstanceScope,
 };
