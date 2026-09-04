@@ -29,9 +29,10 @@ import {
     lazyTarget,
     type TextNode,
 } from "./node.js";
+import { teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
-import { releaseStyle } from "./style.js";
+import { flushStyles, releaseStyle } from "./style.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
@@ -92,6 +93,7 @@ const hostConfig = {
         flushTextHosts();
         flushBehaviors();
         flushAccessible();
+        flushStyles();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,
@@ -190,6 +192,7 @@ function createPriorityTracker(): PriorityTracker {
 
 const detachElement = (instance: ElementNode): void => {
     disconnectAllHandlers(instance);
+    teardownPlacements(instance);
     teardownBehaviors(instance);
 
     if (instance.object instanceof Gtk.Widget) {

@@ -1,5 +1,5 @@
 import type { Library } from "./gir/library.js";
-import type { StoreOptions } from "./store/store-fs.js";
+import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
 import { namespaceDirectory } from "./gir/namespace.js";
@@ -17,6 +17,8 @@ type SplitNamespaces = {
     namespaces: GiNamespaceInput[];
     externalPackages: string[];
 };
+
+type GiCodegenResult = { namespaces: number; store: PreparedStore };
 
 const splitNamespaces = (library: Library): SplitNamespaces => {
     const namespaces: GiNamespaceInput[] = [];
@@ -43,7 +45,7 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
     return { namespaces, externalPackages };
 };
 
-const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
+const runGiCodegen = (library: Library, options: GiCodegenOptions): GiCodegenResult => {
     const { gi, libraries, girPath } = options;
     const { namespaces, externalPackages } = splitNamespaces(library);
 
@@ -54,12 +56,12 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         storeVersion: gi.version,
     });
 
-    writeGiStore(gi, namespaces, externalPackages, {
+    const store = writeGiStore(gi, namespaces, externalPackages, {
         fingerprint,
         libraries: collectGeneratedLibraries(library.namespaces, libraries),
     });
 
-    return library.namespaces.size;
+    return { namespaces: library.namespaces.size, store };
 };
 
 export { runGiCodegen };
