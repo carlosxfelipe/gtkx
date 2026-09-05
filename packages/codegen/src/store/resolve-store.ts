@@ -1,6 +1,6 @@
 import { isPathWithin } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join, parse } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
 import { sweepStagingDirs } from "../staging.js";
 
@@ -49,15 +49,18 @@ const loadPackage = (manifest: string, nodeModules: string): ResolvedPackage | n
 };
 
 const nodeModulesChain = function* (projectRoot: string): Generator<string> {
-    const { root } = parse(projectRoot);
-    let current = projectRoot;
+    let current = resolve(projectRoot);
 
-    while (current !== root) {
+    for (;;) {
         yield join(current, "node_modules");
-        current = dirname(current);
-    }
+        const parent = dirname(current);
 
-    yield join(root, "node_modules");
+        if (parent === current) {
+            return;
+        }
+
+        current = parent;
+    }
 };
 
 const resolvePackage = (projectRoot: string, packageName: string): ResolvedPackage | null => {
@@ -144,8 +147,9 @@ const findStoreNodeModules = (projectRoot: string): string | null => {
 };
 
 const getShadowingStorePaths = (projectRoot: string): string[] => {
-    const nodeModules = join(projectRoot, "node_modules");
-    const anchored = findStoreNodeModules(projectRoot);
+    const root = resolve(projectRoot);
+    const nodeModules = join(root, "node_modules");
+    const anchored = findStoreNodeModules(root);
 
     if (anchored === null || anchored === nodeModules) {
         return [];
@@ -162,7 +166,9 @@ const stagingRoots = (projectRoot: string): string[] => {
 };
 
 const sweepProjectStaging = (projectRoot: string): void => {
-    for (const nodeModules of stagingRoots(projectRoot)) {
+    const root = resolve(projectRoot);
+
+    for (const nodeModules of stagingRoots(root)) {
         for (const name of STORE_NAMES) {
             sweepStagingDirs(join(nodeModules, STORE_DIR, name));
         }
@@ -191,11 +197,12 @@ const sweepProjectStaging = (projectRoot: string): void => {
  * bindings is installed above the `node_modules` the stores would go in, since it could not reach them.
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
-    const owner = realpathSync(projectRoot);
-    const runtime = resolveRuntime(projectRoot);
-    const react = resolvePackage(projectRoot, "@gtkx/react");
+    const root = resolve(projectRoot);
+    const owner = realpathSync(root);
+    const runtime = resolveRuntime(root);
+    const react = resolvePackage(root, "@gtkx/react");
     const nodeModules = storeNodeModules(runtime, react);
-    checkConsumers(projectRoot, nodeModules);
+    checkConsumers(root, nodeModules);
 
     return {
         gi: storeOptions(nodeModules, "gi", runtime.version, owner),

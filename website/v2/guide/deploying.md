@@ -85,6 +85,18 @@ icon. Sizes can be `scalable`, `symbolic`, a square pixel size, or a scaled pixe
 preserves the whole theme tree and its variants. You can omit the option when exactly one `<applicationId>.svg`,
 `.png`, or `.xpm` file is in the project root; deploying without any icon still fails.
 
+An icon-theme directory is copied verbatim; packaging does not filter files by application ID. Keep a development-only `.Devel` icon in a separate tree and select it through the mode overlay so it cannot enter a production package:
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    applicationIcon: "data/icons",
+    $development: {
+        applicationIcon: "data/icons-devel",
+    },
+});
+```
+
 ## What gets installed
 
 Every target installs the same tree, under `/usr` for deb, rpm, and AppImage, and under `/app` for Flatpak:
@@ -204,7 +216,7 @@ When a required tool is missing, `gtkx deploy` lists every one of them at once, 
 gtkx deploy --print-manifests
 ```
 
-writes the desktop entry, the AppStream metainfo, and each target's manifest, validates them, and stops without packaging.
+writes the desktop entry, the AppStream metainfo, and each target's manifest, validates them, and stops without packaging. `desktop-file-validate` hints and warnings are reported as warnings; only an error line, or a non-zero exit from the tool, fails the deploy.
 
 Validation always fails on an AppStream error. An unsupported element reported as `unknown-tag` is also fatal for every target. Other *warnings*, such as a missing homepage, fail only when a target that publishes to a software center is selected, which today means `flatpak`; for `deb`, `rpm`, and `appimage` they are reported and the build continues. Either way the message names the config key that fixes it:
 

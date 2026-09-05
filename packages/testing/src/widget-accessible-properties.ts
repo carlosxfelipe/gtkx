@@ -401,22 +401,22 @@ const isSelfLabelling = (widget: Gtk.Widget, targets: Gtk.Widget[]): boolean => 
     return targets.every((target) => own.has(target));
 };
 
-const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
-    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
-
-    if (targets === null) {
-        return null;
-    }
-
+const labelledByText = (targets: Gtk.Widget[]): string | null => {
     const texts = collectAccessibleNames(targets);
 
     return texts.length > 0 ? texts.join(" ") : null;
 };
 
+const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
+
+    return targets === null ? null : labelledByText(targets);
+};
+
 const getWidgetExternalLabelText = (widget: Gtk.Widget): string | null => {
     const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
 
-    return targets === null || isSelfLabelling(widget, targets) ? null : getWidgetLabelledByText(widget);
+    return targets === null || isSelfLabelling(widget, targets) ? null : labelledByText(targets);
 };
 
 const isTooltipUsedAsName = (widget: Gtk.Widget): boolean =>
@@ -441,28 +441,40 @@ const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
     return isTooltipUsedAsName(widget) ? null : callStringGetter(widget, "getTooltipText");
 };
 
+const isHiddenWithin = (widget: Gtk.Widget, hiddenWidgets: Map<Gtk.Widget, boolean>): boolean => {
+    const cached = hiddenWidgets.get(widget);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const parent = widget.getParent();
+
+    const isHidden =
+        readAccessibleBoolean(widget, Gtk.AccessibleState.HIDDEN) === true ||
+        (parent !== null && isHiddenWithin(parent, hiddenWidgets));
+
+    hiddenWidgets.set(widget, isHidden);
+
+    return isHidden;
+};
+
+const buildInaccessibilityCheck = (): ((target: Gtk.Accessible) => boolean) => {
+    const hiddenWidgets: Map<Gtk.Widget, boolean> = new Map();
+
+    return (target) => isHiddenWithin(requireWidget(target), hiddenWidgets);
+};
+
 /**
  * Returns whether a widget is excluded from the accessibility tree, because it or one of its
  * ancestors is marked hidden.
  *
  * @param widget The widget to test.
  */
-const isInaccessible = (target: Gtk.Accessible): boolean => {
-    const widget = requireWidget(target);
-    let current: Gtk.Widget | null = widget;
-
-    while (current) {
-        if (readAccessibleBoolean(current, Gtk.AccessibleState.HIDDEN) === true) {
-            return true;
-        }
-
-        current = current.getParent();
-    }
-
-    return false;
-};
+const isInaccessible = (target: Gtk.Accessible): boolean => buildInaccessibilityCheck()(target);
 
 export {
+    buildInaccessibilityCheck,
     namingLabelText,
     getWidgetText,
     getWidgetTextContent,

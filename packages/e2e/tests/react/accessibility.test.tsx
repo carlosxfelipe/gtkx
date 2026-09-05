@@ -171,7 +171,7 @@ describe("resolving relation targets without reading the print string", () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} label="Press me" />);
         const button = ref.current as Gtk.Widget;
-        const targets = readAccessibleRelation(button, Gtk.AccessibleRelation.LABELLED_BY, descendants(button));
+        const targets = readAccessibleRelation(button, Gtk.AccessibleRelation.LABELLED_BY, [descendants(button)]);
         expect(targets).toHaveLength(1);
         expect(targets[0]).toHaveTextContent("Press me");
     });
@@ -198,7 +198,7 @@ describe("resolving relation targets without reading the print string", () => {
         const resolved = readAccessibleRelation(
             subject.current as Gtk.Accessible,
             Gtk.AccessibleRelation.LABELLED_BY,
-            both,
+            [both],
         );
 
         expect(resolved).toHaveLength(2);

@@ -42,6 +42,31 @@ Include a screenshot for visible UI changes and link the issue the change closes
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
 
+## Publish a release
+
+Merge the release pull request through the GitHub web UI using the repository's protected merge path. Confirm that the resulting commit on `main` is marked Verified before tagging it. Never merge a release pull request with `gh pr merge --rebase --admin`; that path rewrote the release commit in PR #619 without a signature.
+
+Fetch the verified commit, create a signed tag for the package version, and push that exact tag:
+
+```bash
+git fetch origin main --tags
+git log -1 --show-signature origin/main
+git tag -s vX.Y.Z origin/main -m "vX.Y.Z"
+git push origin refs/tags/vX.Y.Z
+```
+
+In GitHub Releases, create a release for the existing tag, write the complete curated release notes, and save it as a draft. Dispatch the Publish workflow explicitly from that tag:
+
+```bash
+gh workflow run publish.yml --ref vX.Y.Z
+```
+
+The workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes.
+
+The visibility wait gives each package ten minutes by default; the registry took three to four minutes to expose the beta 5 packages. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS`, a positive integer number of milliseconds, overrides that limit for a run of `pnpm release` or of the publish scripts, and an invalid value fails the publish before anything is uploaded.
+
+If any build, publish, or registry check fails, the GitHub release remains a draft. Fix the cause and rerun the workflow on the same tag. A package the registry already holds is skipped, and the wait then checks only that its exact version is visible rather than its dist-tag, while missing packages continue publishing.
+
 ## Documentation and examples
 
 The VitePress site lives in `website/`. Run it through Nx from the repository root:

@@ -7,11 +7,13 @@ const FENCED_CLEANUP_INSTRUCTION =
 const C_CLEANUP_CALL = /\b[a-z]\w*_(?:free(?:_[a-z]\w*)?|freev|unref|unset|destroy)\s*\(\)/i;
 const C_STRFREEV_CALL = /\bg_\w*freev?\s*\(\)/i;
 const GI_CLEANUP_CALL = /\b(?:[A-Z]\w*\.)+(?:free|strfreev|unref|unset|destroy)\s*\(\)/;
+const JS_LIFECYCLE_CALL = /\b(?:Gtk\.Window|GLib\.Source)\.destroy\s*\(\)/g;
 const FREE_CALL = /\bfree\s*\(\)/i;
 const FREE_ACTION = /\bfree(?:d|ing)?\b/i;
 const UNREF_ACTION = /\bunref(?:s|fed|fing|erence[sd]?|erencing)?\b/i;
 const QUOTED_UNREF_ACTION = /\bunref(?:'ed|'d)\b/i;
-const OTHER_CLEANUP_ACTION = /\b(?:unset(?:ting)?|release[sd]?|destroy(?:ed|ing)?)\b/i;
+const OTHER_CLEANUP_ACTION = /\b(?:unset(?:ting)?|released?|destroy(?:ed|ing)?)\b/i;
+const RELEASES_OBJECT = /\breleases\s+(?:(?:a|an|the|all|any|its|this|that|each|every|both|some)\b|[`@])/i;
 const ACTIVE_CLEANUP_MODAL = /\b(?:can|must|should|shouldn't|don't)\b/i;
 const PASSIVE_CLEANUP_MODAL = /\b(?:must|should)\b/i;
 const CLEANUP_PHRASAL_EXPECTATION = /\b(?:do\s+not|will\s+need\s+to|need\s+not|needs?\s+to)\b/i;
@@ -31,10 +33,16 @@ const DIRECT_CLEANUP_START = /^(?:use|call|do not|don't|in particular|instead|al
 const SECOND_PERSON_CLEANUP_START = /^you\s+(?:should|must|need\s+to|have\s+to)\b/i;
 const RETURNED_CLEANUP_START = /^(?:(?:the|a|an)\s+)?returned\b/i;
 const RETURN_VALUE_CLEANUP_START = /^(?:the\s+)?return(?:ed)?\s+(?:value|result)\b/i;
+const RESULTING_CLEANUP_START = /^(?:the\s+)?resulting\s+`?\w+`?\s+(?:should|must)\s+be\s+(?:freed|unreffed)\b/i;
 const VALUE_CLEANUP_START =
-    /^(?:(?:the|this|a|an|both)\s+)?(?:value|array|list|result|string|object|path|paths|reference)\b/i;
+    /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:value|array|list|result|string|object|path|paths|reference)\b`?/i;
+const MEMORY_VALUE_CLEANUP_START =
+    /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:copy|contents?|pointer|memory)\b`?/i;
 const CALLER_OWNERSHIP = /\bbelongs?\s+to\s+(?:the\s+)?caller\b/i;
 const OWNED_BY_CALLER = /\bowned\s+by\s+(?:the\s+)?caller\b/i;
+const CALLER_RESPONSIBILITY =
+    /\b(?:caller|calling\s+code)\s+(?:is|becomes|remains)\s+responsible\s+for\b/i;
+const CLEANUP_RESPONSIBILITY = /\bresponsible\s+for\s+(?:freeing|unreferencing|releasing|destroying)\b/i;
 const OBJECT_OWNERSHIP = /\bobjects?\s+(?:are|is)\s+(?:referenced|owned)\b/i;
 const TAKES_OWNERSHIP = /\btakes?\s+(?:the\s+)?ownership\b/i;
 const TRAILING_CLEANUP_CLAUSE =
@@ -43,11 +51,25 @@ const CLEANUP_CLAUSE_BOUNDARIES = [
     /[,;:]\s*/g,
     /(?:,\s*)?\b(?:which|that)\s+(?=(?:should|must|needs?|is|are|can)\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:then\s+)?(?:free|unref|use|call|do not|don't)\b)/gi,
+    /(?:,\s*)?\band\s+(?=will\s+(?:eventually\s+)?be\s+freed\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:the\s+)?caller\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:must|should)\s+(?:not\s+)?(?:free|unref)\b)/gi,
+    /(?:,\s*)?\b(?:which|that)\s+(?=(?:[\w`]+\s+){1,3}takes?\s+ownership\b)/gi,
 ];
-const INSUBSTANTIAL_CLEANUP_PREFIX = /^(?:as such|for this reason|in general|otherwise)$/i;
-const DEPENDENT_CLEANUP_PREFIX = /^(?:if|when|unless|while|since|to)\b/i;
+const INSUBSTANTIAL_CLEANUP_PREFIX =
+    /^(?:as such|for this reason|in general|otherwise|instead|in particular|alternatively)$/i;
+const CIRCUMSTANTIAL_CLEANUP_PREFIX =
+    /^(?:on (?:success|failure|error)|in (?:the|this|that|either)(?:\s+\w+)*\s+case)$/i;
+const NOUN_PHRASE_CLEANUP_PREFIX = /^(?:the|this|that|these|those|a|an|both)\s+`?\w+`?(?:\s+`?\w+`?)?$/i;
+const DEPENDENT_CLEANUP_PREFIX =
+    /^(?:if|when|unless|while|since|to|(?:likewise|similarly|also|and),?\s+(?:if|when|unless))\b/i;
+const RESULT_CLAUSE_START = /^(?:so\s+that|(?:so|and|but|or)\s+(?:if|when|whenever|unless|while|once|since))\b/i;
+const CONDITIONAL_CLAUSE_START = /^(?:if|when|whenever|unless|while|once|since\s+(?!\d))\b/i;
+const FINITE_VERB =
+    /\b(?:is|are|was|were|has|have|had|does|do|did|will|would|can|could|shall|should|may|might|must)\b/i;
+const PARENTHETICAL_CLAUSE_WORDS = 2;
+const CLAUSE_SEPARATOR = /[,;:]/g;
+const FENCE_INTRODUCTION = /:\s*$/;
 const BLANK_LINES = /(\n{2,})/;
 const EXCESS_BLANK_LINES = /\n{3,}/g;
 const SENTENCE_BOUNDARY = /(?<=[.!?])(?=\s|[A-Z`]|$)/;
@@ -186,7 +208,7 @@ const stripCleanupCExamples = (markdown: string, fences: string[]): string => {
 const isCleanupCall = (text: string): boolean =>
     C_CLEANUP_CALL.test(text) ||
     C_STRFREEV_CALL.test(text) ||
-    GI_CLEANUP_CALL.test(text) ||
+    GI_CLEANUP_CALL.test(text.replaceAll(JS_LIFECYCLE_CALL, "")) ||
     FREE_CALL.test(text);
 
 const protectCleanupCalls = (markdown: string, calls: string[]): string =>
@@ -205,11 +227,16 @@ const hasMemoryAction = (text: string): boolean =>
     FREE_ACTION.test(text) ||
     UNREF_ACTION.test(text) ||
     QUOTED_UNREF_ACTION.test(text) ||
-    OTHER_CLEANUP_ACTION.test(text);
+    OTHER_CLEANUP_ACTION.test(text) ||
+    RELEASES_OBJECT.test(text);
+
+const isCallerCleanupResponsibility = (text: string): boolean =>
+    CALLER_RESPONSIBILITY.test(text) && CLEANUP_RESPONSIBILITY.test(text);
 
 const hasOwnershipCleanupStart = (text: string): boolean =>
     CALLER_OWNERSHIP.test(text) ||
     OWNED_BY_CALLER.test(text) ||
+    isCallerCleanupResponsibility(text) ||
     OBJECT_OWNERSHIP.test(text) ||
     TAKES_OWNERSHIP.test(text);
 
@@ -235,8 +262,7 @@ const hasPassiveCleanupInstruction = (text: string): boolean =>
 const hasCleanupInstruction = (text: string): boolean =>
     hasPassiveCleanupInstruction(text) ||
     hasActiveCleanupInstruction(text) ||
-    CALLER_OWNERSHIP.test(text) ||
-    OWNED_BY_CALLER.test(text) ||
+    hasOwnershipCleanupStart(text) ||
     DIRECT_MEMORY_CLEANUP.test(text.trimStart()) ||
     HIDDEN_CLEANUP_ALTERNATIVE.test(text.trimStart()) ||
     ((text.includes(CLEANUP_TOKEN) || isCleanupCall(text)) &&
@@ -261,7 +287,54 @@ const cleanupClauseStarts = (sentence: string): number[] => {
         .toSorted((left, right) => right - left);
 };
 
-const stripCleanupSentence = (sentence: string): string => {
+type TrailingClausePredicate = (separator: string, clause: string) => boolean;
+
+const conditionalRemainder = (clause: string): string | undefined => {
+    const conditional = CONDITIONAL_CLAUSE_START.exec(clause);
+
+    return conditional === null ? undefined : clause.slice(conditional[0].length).trim();
+};
+
+const isClosedConditional = (remainder: string): boolean =>
+    remainder.split(/\s+/).filter((word) => word.length > 0).length <= PARENTHETICAL_CLAUSE_WORDS ||
+    FINITE_VERB.test(remainder);
+
+const isParentheticalClause = (separator: string, clause: string): boolean => {
+    const remainder = conditionalRemainder(clause);
+
+    return separator === "," && remainder !== undefined && isClosedConditional(remainder);
+};
+
+const isDanglingClause = (separator: string, clause: string): boolean =>
+    RESULT_CLAUSE_START.test(clause) ||
+    (conditionalRemainder(clause) !== undefined && !isParentheticalClause(separator, clause));
+
+const trimTrailingClauses = (text: string, shouldTrim: TrailingClausePredicate): string => {
+    let trimmed = text;
+
+    for (;;) {
+        const last = trimmed.matchAll(CLAUSE_SEPARATOR).toArray().at(-1);
+
+        if (last === undefined || !shouldTrim(last[0], trimmed.slice(last.index + 1).trimStart())) {
+            return trimmed;
+        }
+
+        trimmed = trimmed.slice(0, last.index).trimEnd();
+    }
+};
+
+const trimDanglingClauses = (prefix: string): string => trimTrailingClauses(prefix, isDanglingClause);
+
+const isNounPhrasePrefix = (prefix: string): boolean =>
+    NOUN_PHRASE_CLEANUP_PREFIX.test(trimTrailingClauses(prefix, isParentheticalClause).trim());
+
+const isCleanupPrefixInsubstantial = (prefix: string, isLeading: boolean): boolean =>
+    INSUBSTANTIAL_CLEANUP_PREFIX.test(prefix) ||
+    CIRCUMSTANTIAL_CLEANUP_PREFIX.test(prefix) ||
+    DEPENDENT_CLEANUP_PREFIX.test(prefix) ||
+    (!isLeading && isNounPhrasePrefix(prefix));
+
+const stripCleanupSentence = (sentence: string, isLeading: boolean): string => {
     let stripped = sentence;
 
     while (hasCleanupInstruction(stripped)) {
@@ -271,9 +344,9 @@ const stripCleanupSentence = (sentence: string): string => {
             return "";
         }
 
-        const prefix = stripped.slice(0, start).trimEnd();
+        const prefix = trimDanglingClauses(stripped.slice(0, start).trimEnd());
 
-        if (INSUBSTANTIAL_CLEANUP_PREFIX.test(prefix.trim()) || DEPENDENT_CLEANUP_PREFIX.test(prefix.trim())) {
+        if (isCleanupPrefixInsubstantial(prefix.trim(), isLeading)) {
             return "";
         }
 
@@ -293,20 +366,32 @@ const restoreCleanupCalls = (markdown: string, calls: string[]): string => {
     return restored;
 };
 
-const mapDocSentences = (markdown: string, transform: (sentence: string) => string): string =>
-    markdown
+type SentenceTransform = (sentence: string, isLeading: boolean) => string;
+
+const mapDocSentences = (markdown: string, transform: SentenceTransform): string => {
+    let isLeading = true;
+
+    return markdown
         .split(BLANK_LINES)
         .map((part) => {
             if (/^\n{2,}$/.test(part) || FENCE_LINE.test(part)) {
                 return part;
             }
 
-            return part
+            const transformed = part
                 .split(SENTENCE_BOUNDARY)
-                .map((sentence) => transform(sentence))
+                .map((sentence) => {
+                    const result = transform(sentence, isLeading);
+                    isLeading = false;
+
+                    return result;
+                })
                 .join("");
+
+            return /^\s/.test(part) ? transformed : transformed.trimStart();
         })
         .join("");
+};
 
 const stripManualMemoryManagement = (markdown: string): string => {
     const calls: string[] = [];
@@ -320,6 +405,17 @@ const stripManualMemoryManagement = (markdown: string): string => {
     return restoreFencedBlocks(restoreCleanupCalls(compacted, calls), fences).trim();
 };
 
+const isWholeCleanupInstruction = (text: string): boolean =>
+    DIRECT_MEMORY_CLEANUP.test(text) || DIRECT_CLEANUP_START.test(text) || SECOND_PERSON_CLEANUP_START.test(text);
+
+const isValueCleanupInstruction = (text: string): boolean =>
+    RETURNED_CLEANUP_START.test(text) ||
+    RETURN_VALUE_CLEANUP_START.test(text) ||
+    RESULTING_CLEANUP_START.test(text) ||
+    VALUE_CLEANUP_START.test(text) ||
+    MEMORY_VALUE_CLEANUP_START.test(text) ||
+    hasOwnershipCleanupStart(text);
+
 const stripStandaloneCleanupSentence = (sentence: string): string => {
     const trimmed = sentence.trimStart();
 
@@ -327,22 +423,15 @@ const stripStandaloneCleanupSentence = (sentence: string): string => {
         return sentence;
     }
 
-    const isInstructionStart =
-        DIRECT_MEMORY_CLEANUP.test(trimmed) ||
-        DIRECT_CLEANUP_START.test(trimmed) ||
-        SECOND_PERSON_CLEANUP_START.test(trimmed) ||
-        RETURNED_CLEANUP_START.test(trimmed) ||
-        RETURN_VALUE_CLEANUP_START.test(trimmed) ||
-        VALUE_CLEANUP_START.test(trimmed) ||
-        hasOwnershipCleanupStart(trimmed);
-
-    if (isInstructionStart) {
+    if (isWholeCleanupInstruction(trimmed)) {
         return "";
     }
 
-    return TRAILING_CLEANUP_CLAUSE.test(trimmed) || cleanupClauseStarts(trimmed).length > 0
-        ? stripCleanupSentence(sentence)
-        : sentence;
+    if (TRAILING_CLEANUP_CLAUSE.test(trimmed) || cleanupClauseStarts(trimmed).length > 0) {
+        return stripCleanupSentence(sentence, false);
+    }
+
+    return isValueCleanupInstruction(trimmed) ? "" : sentence;
 };
 
 const stripStandaloneParagraph = (markdown: string): string =>
@@ -375,7 +464,8 @@ const stripStandaloneMemoryManagement = (markdown: string): string => {
 
             const transformed = stripStandaloneParagraph(part);
             shouldDropCleanupFence =
-                transformed.trim().length === 0 && DIRECT_MEMORY_CLEANUP.test(part.trimStart());
+                transformed.trim().length === 0 &&
+                (DIRECT_MEMORY_CLEANUP.test(part.trimStart()) || FENCE_INTRODUCTION.test(part));
 
             return transformed;
         })

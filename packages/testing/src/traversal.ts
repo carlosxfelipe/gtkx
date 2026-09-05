@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { getClassType, getInstanceType, typeIsA } from "@gtkx/runtime";
 
 /**
  * A scope that resolves to a single root widget: the widget itself, the widget a controller or
@@ -15,10 +16,25 @@ type WidgetClass<T extends object> = abstract new (...args: never[]) => T;
 
 /** Container sentinel that widens a query to every toplevel window currently open. */
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
+const nativeWidgetTypes: Map<bigint, boolean> = new Map();
 
 const isApplication = (container: Container): container is Gtk.Application => container instanceof Gtk.Application;
 const isAnyWidget = (): boolean => true;
 const isOnScreen = (widget: Gtk.Widget): boolean => widget.getMapped();
+
+const isNativeWidget = (widget: Gtk.Widget): boolean => {
+    const type = getInstanceType(widget);
+    const cached = nativeWidgetTypes.get(type);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const isNative = typeIsA(type, getClassType(Gtk.Native));
+    nativeWidgetTypes.set(type, isNative);
+
+    return isNative;
+};
 
 const traverseWidgetTree = function* (
     root: Gtk.Widget,
@@ -70,15 +86,23 @@ const ancestorFor = <T extends object>(widget: Gtk.Widget, type: WidgetClass<T>)
     return null;
 };
 
-const relationCandidates = (widget: Gtk.Widget): Gtk.Accessible[] => {
-    const pool: Gtk.Accessible[] = [...widget.listMnemonicLabels(), ...descendants(widget)];
-    const root = widget.getRoot();
+const mappedWidgets = function* (widget: Gtk.Widget, isParentMapped: boolean): Generator<Gtk.Widget> {
+    const isMapped = (isParentMapped || isNativeWidget(widget)) && isOnScreen(widget);
 
-    if (root instanceof Gtk.Widget) {
-        pool.push(...traverseWidgetTree(root, isAnyWidget));
+    if (isMapped) {
+        yield widget;
     }
 
-    return [...new Set(pool)];
+    for (const child of children(widget)) {
+        yield* mappedWidgets(child, isMapped);
+    }
+};
+
+const relationCandidates = (widget: Gtk.Widget): Iterable<Gtk.Accessible>[] => {
+    const root = widget.getRoot();
+    const tree: Iterable<Gtk.Accessible> = root instanceof Gtk.Widget ? traverseWidgetTree(root, isAnyWidget) : [];
+
+    return [widget.listMnemonicLabels(), descendants(widget), tree];
 };
 
 const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
@@ -117,7 +141,7 @@ const roots = function* (container: Container): Generator<Gtk.Widget> {
 
 const traverse = function* (container: Container): Generator<Gtk.Widget> {
     for (const root of roots(container)) {
-        yield* traverseWidgetTree(root, isOnScreen);
+        yield* mappedWidgets(root, true);
     }
 };
 

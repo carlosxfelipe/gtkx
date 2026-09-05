@@ -73,6 +73,8 @@ Every query kind is available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `
 
 Roles are always `Gtk.AccessibleRole` enum values, never strings: a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. `ByRole` narrows further by `name` and by accessible state; see [`ByRoleOptions`](/reference/@gtkx/testing/type-aliases/ByRoleOptions). Text matchers take a `string` or number, a `RegExp`, or a predicate function.
 
+A `GtkButton` with a text `label` is labelled by its child label, and that GTK relation takes precedence over an `accessibleLabel` prop. Query it by the visible label and, when several buttons share that text, scope the query through a distinguishing parent.
+
 ```ts
 import * as Gtk from "@gtkx/gi/gtk";
 

@@ -168,33 +168,69 @@ const findRelationSize = (
     return 0;
 };
 
-const possibleTargets = (relation: Gtk.AccessibleRelation, candidates: Gtk.Accessible[]): Gtk.Accessible[] => {
+type RelationScan = { size: number; targets: Gtk.Accessible[] };
+
+const unseen = function* <T>(items: Iterable<T>, seen: Set<T>): Generator<T> {
+    for (const item of items) {
+        if (seen.has(item)) {
+            continue;
+        }
+
+        seen.add(item);
+        yield item;
+    }
+};
+
+const possibleTargets = (relation: Gtk.AccessibleRelation, candidates: Iterable<Gtk.Accessible>): Gtk.Accessible[] => {
     const reverse = REVERSE_RELATIONS[relation];
 
     if (reverse === undefined) {
-        return candidates;
+        return [...candidates];
     }
 
-    return candidates.filter((candidate) => Gtk.testAccessibleHasRelation(candidate, reverse));
+    return [...candidates].filter((candidate) => Gtk.testAccessibleHasRelation(candidate, reverse));
 };
+
+const scanRelationTier = (
+    accessible: Gtk.Accessible,
+    relation: Gtk.AccessibleRelation,
+    candidates: Gtk.Accessible[],
+    scan: RelationScan,
+): RelationScan => {
+    const size = scan.size > 0 ? scan.size : findRelationSize(accessible, relation, candidates);
+
+    if (size === 0) {
+        return scan;
+    }
+
+    const found = candidates.filter((candidate) => isRelationExactly(accessible, relation, candidate, size));
+
+    return { size, targets: [...scan.targets, ...found] };
+};
+
+const isRelationComplete = (scan: RelationScan): boolean => scan.size > 0 && scan.targets.length >= scan.size;
 
 const readAccessibleRelation = (
     accessible: Gtk.Accessible,
     relation: Gtk.AccessibleRelation,
-    pool: Gtk.Accessible[],
+    tiers: Iterable<Gtk.Accessible>[],
 ): Gtk.Accessible[] => {
     if (!Gtk.testAccessibleHasRelation(accessible, relation)) {
         return [];
     }
 
-    const candidates = possibleTargets(relation, pool);
-    const size = findRelationSize(accessible, relation, candidates);
+    const seen: Set<Gtk.Accessible> = new Set();
+    let scan: RelationScan = { size: 0, targets: [] };
 
-    if (size === 0) {
-        return [];
+    for (const tier of tiers) {
+        scan = scanRelationTier(accessible, relation, possibleTargets(relation, unseen(tier, seen)), scan);
+
+        if (isRelationComplete(scan)) {
+            break;
+        }
     }
 
-    return candidates.filter((candidate) => isRelationExactly(accessible, relation, candidate, size));
+    return scan.targets;
 };
 
 const memberOfDomain = (check: CheckInt, handle: unknown, attribute: number, domain: number[]): number | null => {

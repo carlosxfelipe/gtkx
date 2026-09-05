@@ -32,6 +32,20 @@ type CaptureOutcome =
     { status: "captured"; result: ScreenshotResult } |
     { status: "stalled"; failure: CaptureFailure };
 
+type BackgroundSnapshot = {
+    renderBackground(...args: [context: object, x: number, y: number, width: number, height: number]): void;
+};
+
+type StyledWidget = {
+    getStyleContext(): object;
+};
+
+type RenderSize = {
+    scale: number;
+    width: number;
+    height: number;
+};
+
 const DEFAULT_SCREENSHOT_INTERVAL = 10;
 const PRESENTATION_PROBE_MS = 250;
 
@@ -180,16 +194,43 @@ const getChildrenNode = (widget: Gtk.Widget, scale: number): Gsk.RenderNode | nu
     return snapshot.toNode();
 };
 
-const getRenderNode = (widget: Gtk.Widget, scale: number, width: number, height: number): Gsk.RenderNode | null => {
-    const presented = getPaintableNode(widget, scale, width, height);
+const addWindowBackground = (
+    widget: Gtk.Widget,
+    node: Gsk.RenderNode,
+    { scale, width, height }: RenderSize,
+): Gsk.RenderNode => {
+    if (!(widget instanceof Gtk.Window)) {
+        return node;
+    }
 
-    if (presented) {
-        return presented;
+    const snapshot = new Gtk.Snapshot();
+    const backgroundSnapshot: BackgroundSnapshot = snapshot;
+    const styledWidget: StyledWidget = widget;
+    snapshot.save();
+    snapshot.scale(scale, scale);
+    backgroundSnapshot.renderBackground(styledWidget.getStyleContext(), 0, 0, width, height);
+    snapshot.restore();
+    snapshot.appendNode(node);
+
+    return snapshot.toNode() ?? node;
+};
+
+const getFallbackNode = (widget: Gtk.Widget, size: RenderSize): Gsk.RenderNode | null => {
+    const content = getChildrenNode(widget, size.scale);
+
+    return content === null ? null : addWindowBackground(widget, content, size);
+};
+
+const getRenderNode = (widget: Gtk.Widget, scale: number, width: number, height: number): Gsk.RenderNode | null => {
+    const content = getPaintableNode(widget, scale, width, height);
+
+    if (content) {
+        return content;
     }
 
     allocateRoot(widget);
 
-    return getPaintableNode(widget, scale, width, height) ?? getChildrenNode(widget, scale);
+    return getPaintableNode(widget, scale, width, height) ?? getFallbackNode(widget, { scale, width, height });
 };
 
 const renderToPng = (widget: Gtk.Widget, node: Gsk.RenderNode, width: number, height: number): ScreenshotResult => {

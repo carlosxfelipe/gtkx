@@ -90,6 +90,16 @@ type ItemSizeProps = {
     estimatedItemWidth?: number | undefined;
 };
 
+/** The flat-collection hint shared by {@link ListView} and {@link ColumnView}. */
+type FlatnessProps = {
+    /**
+     * Declares every item a leaf, so the view skips tree discovery when synchronising a large collection
+     * instead of scanning each item for `children`. Must not be set when any item has children: those
+     * items would render as plain rows that never expand.
+     */
+    isFlat?: boolean | undefined;
+};
+
 /** Controlled selection shared by the multi-item collection views. */
 type SelectionProps = {
     /**
@@ -172,6 +182,7 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     ExpansionProps &
     SortProps &
     SourceProps<T, S> &
+    FlatnessProps &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
@@ -242,7 +253,8 @@ type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | k
 type ListViewOwnProps<T, S> = ItemSizeProps &
     SelectionProps &
     ExpansionProps &
-    SourceProps<T, S> & {
+    SourceProps<T, S> &
+    FlatnessProps & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
         /** Renders the header shown above each section. */

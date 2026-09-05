@@ -12,6 +12,7 @@ import { multipleFoundError, notFoundError } from "./errors.js";
 import { getDefaultNormalizer } from "./normalize.js";
 import { type Container, findAll, traverse } from "./traversal.js";
 import {
+    buildInaccessibilityCheck,
     getWidgetAccessibleName,
     getWidgetBusyState,
     getWidgetDescription,
@@ -26,7 +27,6 @@ import {
     getWidgetPressedState,
     getWidgetSelectedState,
     getWidgetValueText,
-    isInaccessible,
     isWidgetChecked,
     isWidgetValueMatch,
     namingLabelText,
@@ -332,16 +332,18 @@ function queryAllByRole<T extends Gtk.Accessible = Gtk.Widget>(
     role: Gtk.AccessibleRole,
     options?: ByRoleOptions<T>,
 ): T[] {
+    const isInaccessible = buildInaccessibilityCheck();
+
     const matches = findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) {
             return false;
         }
 
-        if (!options?.hidden && isInaccessible(widget)) {
+        if (!isMatchingWidgetType(widget, options)) {
             return false;
         }
 
-        if (!isMatchingWidgetType(widget, options)) {
+        if (!options?.hidden && isInaccessible(widget)) {
             return false;
         }
 

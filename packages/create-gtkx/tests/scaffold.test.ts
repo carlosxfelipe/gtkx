@@ -86,7 +86,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
         expect(installs).toContain("@gtkx/cairo");
         expect(installs).toContain("@gtkx/cli");
         expect(installs).toContain("@gtkx/testing");
-        expect(installs).toContain("typescript");
+        expect(installs).toContain("typescript@^6.0.3");
     });
 
     it("records the build allowance pnpm understands", () => {
@@ -162,20 +162,20 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
             expect(hasProjectPath(run, "node_modules")).toBe(false);
             expectGeneratedConfig(run);
             expect(readManifest(run).dependencies).toEqual({
-                "@gtkx/cairo": "^2.0.0-beta.5",
-                "@gtkx/css": "^2.0.0-beta.5",
-                "@gtkx/react": "^2.0.0-beta.5",
-                "@gtkx/runtime": "^2.0.0-beta.5",
+                "@gtkx/cairo": "^2.0.0-beta.6",
+                "@gtkx/css": "^2.0.0-beta.6",
+                "@gtkx/react": "^2.0.0-beta.6",
+                "@gtkx/runtime": "^2.0.0-beta.6",
                 react: "latest",
             });
             expect(readManifest(run).devDependencies).toEqual({
-                "@gtkx/cli": "^2.0.0-beta.5",
-                "@gtkx/config": "^2.0.0-beta.5",
-                "@gtkx/mcp": "^2.0.0-beta.5",
-                "@gtkx/testing": "^2.0.0-beta.5",
+                "@gtkx/cli": "^2.0.0-beta.6",
+                "@gtkx/config": "^2.0.0-beta.6",
+                "@gtkx/mcp": "^2.0.0-beta.6",
+                "@gtkx/testing": "^2.0.0-beta.6",
                 "@types/node": "latest",
                 "@types/react": "latest",
-                typescript: "latest",
+                typescript: "^6.0.3",
                 vite: "latest",
                 vitest: "latest",
             });

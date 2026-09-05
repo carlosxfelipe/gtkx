@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { cssBlendmodesDemo } from "../../../src/demos/css/css-blendmodes.js";
 import { renderDemo } from "../../test-utils.js";
 
+const blendClasses = (grid: Gtk.Grid): string[] => grid.getCssClasses().filter((name) => name.startsWith("gtkx-"));
+
 const activateRow = async (name: string): Promise<void> => {
     const listbox = await screen.findByName("blend-list", { as: Gtk.ListBox });
     const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name, as: Gtk.ListBoxRow });
@@ -56,33 +58,33 @@ describe("cssBlendmodesDemo behavior", () => {
     it("regenerates the root grid blend-mode css class when a blend row is activated", async () => {
         await renderDemo(cssBlendmodesDemo);
         const grid = await screen.findByName("blend-root", { as: Gtk.Grid });
-        const initialClasses = grid.getCssClasses();
+        const initialClasses = blendClasses(grid);
         expect(initialClasses).toHaveLength(1);
         await activateRow("Multiply");
 
         await waitFor(() => {
-            expect(grid.getCssClasses()).not.toEqual(initialClasses);
+            expect(blendClasses(grid)).not.toEqual(initialClasses);
         });
 
-        expect(grid.getCssClasses()).toHaveLength(1);
+        expect(blendClasses(grid)).toHaveLength(1);
     });
 
     it("produces a distinct css class for each activated blend mode", async () => {
         await renderDemo(cssBlendmodesDemo);
         const grid = await screen.findByName("blend-root", { as: Gtk.Grid });
-        const initial = grid.getCssClasses();
+        const initial = blendClasses(grid);
         await activateRow("Overlay");
         let overlayClasses: string[] = initial;
 
         await waitFor(() => {
-            overlayClasses = grid.getCssClasses();
+            overlayClasses = blendClasses(grid);
             expect(overlayClasses).not.toEqual(initial);
         });
 
         await activateRow("Saturate");
 
         await waitFor(() => {
-            expect(grid.getCssClasses()).not.toEqual(overlayClasses);
+            expect(blendClasses(grid)).not.toEqual(overlayClasses);
         });
     });
 });

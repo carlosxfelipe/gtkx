@@ -8,9 +8,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { decodePngSize } from "./png-helpers.js";
+import { decodePng, decodePngSize } from "./png-helpers.js";
 
 const SETTLE_MS = 300;
+const RGBA_CHANNELS = 4;
+const WINDOW_BACKGROUND = [18, 52, 86, 255];
+const FOREGROUND_BACKGROUND = [180, 40, 70, 255];
+const TRANSLUCENT_ALPHA = 128;
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -71,6 +75,12 @@ const widgetFor = <T extends Gtk.Widget>(ref: RefObject<T | null>): T => {
     return current;
 };
 
+const pixelAt = (pixels: Uint8Array, width: number, x: number, y: number): number[] => {
+    const offset = (y * width + x) * RGBA_CHANNELS;
+
+    return [...pixels.slice(offset, offset + RGBA_CHANNELS)];
+};
+
 describe("screenshot", () => {
     it("returns a PNG whose declared size matches the encoded one and supersamples on request", async () => {
         const { container } = await render(<GtkLabel>Scaled</GtkLabel>);
@@ -82,6 +92,80 @@ describe("screenshot", () => {
         expect(scaled.width).toBe(base.width * 2);
         expect(scaled.height).toBe(base.height * 2);
         expect(decodePngSize(scaled.data)).toEqual({ width: scaled.width, height: scaled.height });
+    });
+
+    it("composites a window's resolved CSS background while leaving widget captures transparent", async () => {
+        const windowRef = createRef<Gtk.Window>();
+        const labelRef = createRef<Gtk.Label>();
+
+        await render(
+            <GtkWindow
+                ref={windowRef}
+                title="Painted window"
+                decorated={false}
+                defaultWidth={160}
+                defaultHeight={100}
+                style={{ backgroundColor: "rgb(18, 52, 86)" }}
+            >
+                <GtkBox halign={Gtk.Align.START} valign={Gtk.Align.START} orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel style={{ backgroundColor: "rgb(180, 40, 70)", padding: 8 }}>Foreground</GtkLabel>
+                    <GtkLabel ref={labelRef}>Transparent subtree</GtkLabel>
+                </GtkBox>
+            </GtkWindow>,
+            { container: rootElement },
+        );
+
+        const window = widgetFor(windowRef);
+        const label = widgetFor(labelRef);
+        const windowScreenshot = await screenshot(window, { scale: 2 });
+        const labelScreenshot = await screenshot(label);
+        const capturedWindow = decodePng(windowScreenshot.data);
+        const capturedLabel = decodePng(labelScreenshot.data);
+        const backgroundPixel = pixelAt(
+            capturedWindow.pixels,
+            capturedWindow.width,
+            capturedWindow.width - 4,
+            capturedWindow.height - 4,
+        );
+        const foregroundPixel = pixelAt(capturedWindow.pixels, capturedWindow.width, 4, 4);
+        const opaqueWindowPixels = capturedWindow.pixels.filter(
+            (channel, index) => index % RGBA_CHANNELS === RGBA_CHANNELS - 1 && channel === 255,
+        ).length;
+        expect(backgroundPixel).toEqual(WINDOW_BACKGROUND);
+        expect(foregroundPixel).toEqual(FOREGROUND_BACKGROUND);
+        expect(opaqueWindowPixels).toBeGreaterThan(capturedWindow.width * capturedWindow.height * 0.9);
+        expect(
+            capturedLabel.pixels.some(
+                (channel, index) => index % RGBA_CHANNELS === RGBA_CHANNELS - 1 && channel === 0,
+            ),
+        ).toBe(true);
+    });
+
+    it("paints a translucent window background once", async () => {
+        const windowRef = createRef<Gtk.Window>();
+
+        await render(
+            <GtkWindow
+                ref={windowRef}
+                title="Translucent window"
+                decorated={false}
+                defaultWidth={160}
+                defaultHeight={100}
+                style={{ backgroundColor: "rgba(0, 0, 255, 0.5)" }}
+            >
+                <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.START}>Corner</GtkLabel>
+            </GtkWindow>,
+            { container: rootElement },
+        );
+
+        const result = await screenshot(widgetFor(windowRef));
+        const captured = decodePng(result.data);
+        const corner = pixelAt(captured.pixels, captured.width, captured.width - 4, captured.height - 4);
+        expect(corner[0]).toBe(0);
+        expect(corner[1]).toBe(0);
+        expect(corner[2]).toBe(255);
+        expect(corner[3]).toBeGreaterThanOrEqual(TRANSLUCENT_ALPHA - 2);
+        expect(corner[3]).toBeLessThanOrEqual(TRANSLUCENT_ALPHA + 2);
     });
 
     it("writes the PNG to the requested file, creating missing directories", async () => {

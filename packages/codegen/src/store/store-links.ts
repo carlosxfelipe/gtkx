@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { type ResolvedStore, resolveStore } from "./resolve-store.js";
 import { ensureStoreLink } from "./store-fs.js";
 
@@ -33,7 +33,7 @@ const storeFor = (projectRoot: string): ResolvedStore | null => {
 };
 
 const ensureStoreLinks = (projectRoot: string): void => {
-    const store = storeFor(projectRoot);
+    const store = storeFor(resolve(projectRoot));
 
     if (store === null) {
         return;

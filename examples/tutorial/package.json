@@ -19,23 +19,23 @@
         "deploy": "gtkx deploy"
     },
     "dependencies": {
-        "@gtkx/cairo": "^2.0.0-beta.5",
-        "@gtkx/components": "^2.0.0-beta.5",
-        "@gtkx/css": "^2.0.0-beta.5",
-        "@gtkx/forms": "^2.0.0-beta.5",
-        "@gtkx/i18n": "^2.0.0-beta.5",
-        "@gtkx/navigation": "^2.0.0-beta.5",
-        "@gtkx/react": "^2.0.0-beta.5",
+        "@gtkx/cairo": "^2.0.0-beta.6",
+        "@gtkx/components": "^2.0.0-beta.6",
+        "@gtkx/css": "^2.0.0-beta.6",
+        "@gtkx/forms": "^2.0.0-beta.6",
+        "@gtkx/i18n": "^2.0.0-beta.6",
+        "@gtkx/navigation": "^2.0.0-beta.6",
+        "@gtkx/react": "^2.0.0-beta.6",
         "react": "^19.2.8",
         "zustand": "^5.0.15"
     },
     "devDependencies": {
-        "@gtkx/cli": "^2.0.0-beta.5",
-        "@gtkx/config": "^2.0.0-beta.5",
-        "@gtkx/testing": "^2.0.0-beta.5",
+        "@gtkx/cli": "^2.0.0-beta.6",
+        "@gtkx/config": "^2.0.0-beta.6",
+        "@gtkx/testing": "^2.0.0-beta.6",
         "@types/node": "^26.4.0",
         "@types/react": "^19.2.18",
-        "typescript": "^7.0.2",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.11"
     },
     "allowScripts": {

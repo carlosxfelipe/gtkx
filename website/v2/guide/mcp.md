@@ -9,6 +9,8 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 `gtkx dev` starts the app side automatically as soon as the entry module mounts an application, and the two halves find each other whenever both are up, so start order does not matter. Several apps can register with one server: every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app, while the reference tools take `projectRoot` instead. A widget tool waits up to ten seconds for that specific app to register; `appTimeout` changes the wait in milliseconds. All of this is development tooling, so `gtkx build` bundles none of it and a production app has nothing listening.
 
+For a display-less MCP session, run `gtkx dev --headless` from a parent that lives as long as the session, such as a supervisor or a terminal that stays open. The app is tied to the process that is the parent of `gtkx dev` when it starts, and GTKX deliberately shuts the app down when that parent exits. `nohup` does not change which process that is. `setsid` keeps the app alive only when it forks, which `setsid -f` always does and a plain `setsid` does only from an interactive shell; without the fork the parent is unchanged and the app still ends with it. The [testing guide](/v2/guide/testing#setup) covers the private display and cleanup lifecycle.
+
 ## Setup
 
 `@gtkx/mcp` carries the `gtkx-mcp` binary the MCP client launches, and `@gtkx/testing` backs every widget tool. Both belong in the project's dev dependencies. A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option has `@gtkx/testing` too. Otherwise install them:

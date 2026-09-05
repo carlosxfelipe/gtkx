@@ -3,7 +3,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow } from "@gtkx/jsx/adw";
+import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -22,6 +22,8 @@ import {
     GtkLabel,
     GtkListBox,
     GtkListBoxRow,
+    GtkShortcut,
+    GtkShortcutController,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
@@ -29,6 +31,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 import {
     renderClickButton,
@@ -379,6 +382,69 @@ describe("userEvent.click", () => {
         await userEvent.click(row);
         expect(list.getSelectedRow()).toBe(row);
         expect(selections).toEqual([row]);
+    });
+
+    it("delivers a pointer click on a row to a gesture authored on its list", async () => {
+        const handlePressed = vi.fn<(nPress: number, x: number, y: number) => void>();
+        const handleReleased = vi.fn();
+        const activations: string[] = [];
+
+        await render(
+            <GtkListBox
+                onRowActivated={(row) => {
+                    activations.push(row.getName());
+                }}
+                controllers={<GtkGestureClick onPressed={handlePressed} onReleased={handleReleased} />}
+            >
+                <GtkListBoxRow name="first">
+                    <GtkLabel>First</GtkLabel>
+                </GtkListBoxRow>
+                <GtkListBoxRow name="second">
+                    <GtkLabel>Second</GtkLabel>
+                </GtkListBoxRow>
+            </GtkListBox>,
+        );
+
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Second", as: Gtk.ListBoxRow });
+        await userEvent.pointer(row, "click");
+        expect(activations).toEqual(["second"]);
+        expect(handlePressed).toHaveBeenCalledTimes(1);
+        expect(handleReleased).toHaveBeenCalledTimes(1);
+        const [, x, y] = handlePressed.mock.calls[0] ?? [];
+        const list = row.getParent();
+
+        if (list === null) {
+            throw new Error("expected the row to be inside its list");
+        }
+
+        const [, bounds] = row.computeBounds(list);
+        expect(x).toBe(bounds.getX() + bounds.getWidth() / 2);
+        expect(y).toBe(bounds.getY() + bounds.getHeight() / 2);
+        expect(y).toBeGreaterThan(bounds.getY());
+    });
+
+    it("activates sidebar rows through click and pointer without driving internal gestures", async () => {
+        let activations = 0;
+        const onActivated = () => {
+            activations += 1;
+        };
+
+        await render(
+            <AdwSidebar onActivated={onActivated}>
+                <AdwSidebarSection>
+                    <AdwSidebarItem title="Files" />
+                </AdwSidebarSection>
+            </AdwSidebar>,
+        );
+
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Files",
+            as: Gtk.ListBoxRow,
+        });
+
+        await userEvent.click(row);
+        await userEvent.pointer(row, "click");
+        expect(activations).toBe(2);
     });
 });
 
@@ -901,6 +967,83 @@ describe("userEvent.keyboard: shortcuts", () => {
     it("runs a capture-phase shortcut ahead of the target's key controllers, and a bubble one behind", async () => {
         expect(await pressShortcutOverStoppingField(Gtk.PropagationPhase.CAPTURE)).toHaveBeenCalled();
         expect(await pressShortcutOverStoppingField(Gtk.PropagationPhase.BUBBLE)).not.toHaveBeenCalled();
+    });
+
+    it("does not continue an Enter press into a newly focused default button", async () => {
+        const sidebarRef = createRef<Adw.Sidebar>();
+        const buttonRef = createRef<Gtk.Button>();
+        let activations = 0;
+        let defaultActivations = 0;
+        let clicks = 0;
+        const onClicked = () => {
+            clicks += 1;
+        };
+        const enter = Gtk.ShortcutTrigger.parseString("Return");
+        const handleDefault = () => {
+            defaultActivations += 1;
+            const button = buttonRef.current;
+
+            if (button === null) {
+                return false;
+            }
+
+            button.emit("clicked");
+
+            return true;
+        };
+        const activateDefault = Gtk.CallbackAction.new(handleDefault);
+        const onActivated = () => {
+            activations += 1;
+            const button = buttonRef.current;
+            const root = button?.getRoot();
+            sidebarRef.current?.setVisible(false);
+
+            if (button !== null && root instanceof Gtk.Window) {
+                root.setDefaultWidget(button);
+                button.grabFocus();
+            }
+        };
+
+        await render(
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                controllers={(
+                    <GtkShortcutController
+                        shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />}
+                    />
+                )}
+            >
+                <AdwSidebar ref={sidebarRef} mode={Adw.SidebarMode.PAGE} selected={0} onActivated={onActivated}>
+                    <AdwSidebarSection>
+                        <AdwSidebarItem title="Navigate" />
+                    </AdwSidebarSection>
+                </AdwSidebar>
+                <GtkButton ref={buttonRef} label="Run" onClicked={onClicked} />
+            </GtkBox>,
+        );
+
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Navigate",
+            as: Gtk.ListBoxRow,
+        });
+        const shortcutController = new Gtk.ShortcutController();
+        shortcutController.addShortcut(
+            Gtk.Shortcut.new(
+                Gtk.ShortcutTrigger.parseString("Return"),
+                Gtk.CallbackAction.new(() => {
+                    onActivated();
+
+                    return false;
+                }),
+            ),
+        );
+        row.addController(shortcutController);
+
+        row.grabFocus();
+        await userEvent.keyboard(row, "{Enter}");
+        expect(activations).toBe(1);
+        expect(defaultActivations).toBe(0);
+        expect(clicks).toBe(0);
     });
 });
 

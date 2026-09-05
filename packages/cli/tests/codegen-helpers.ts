@@ -105,7 +105,25 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
 const READ_DOC = "Reads the note back in the given tone.";
 const COPY_DOC = "Copies the note text.";
-const STRIPPED_CLEANUP_TEXT = ["must free", "strfreev", "GLib.free()", "g_free()"];
+const STRIPPED_CLEANUP_TEXT = [
+    "must free",
+    "strfreev",
+    "responsible for freeing",
+    "should be freed",
+    "must be freed",
+    "needs to be freed",
+    "eventually be freed",
+    "Free it with",
+    "Free each item",
+    "Instead",
+    "In particular",
+    "This address",
+    "The only function",
+    "dynamically allocated,",
+    "no longer in use",
+    "belongs to the caller",
+    "The list",
+];
 const COMMENT = /\/\*|\/\//u;
 const PURE = "/* @__PURE__ */";
 
@@ -125,6 +143,19 @@ const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
             "* @returns a copy of the note.",
             "* @returns a list of strvs.",
             '* @param value free text to search for, for instance, "power"',
+            "* Describes copied values.",
+            "* The memory of the input has to be dynamically allocated.",
+            "* Describes allocator behavior.",
+            "automatically via",
+            "for memory allocation.",
+            "* Describes lifecycle details.",
+            "* Note that filters run in another thread.",
+            "* The port is chosen by the system.",
+            "* After calling this function, it is no longer possible to add more nodes.",
+            "* The items are not freed.",
+            "* The data contained in the resulting `GBytes` is always zero-terminated.",
+            "rather than handed to `g_free()`.",
+            "* @returns a list of cell renderers.",
         ],
         stripped: STRIPPED_CLEANUP_TEXT,
     },
