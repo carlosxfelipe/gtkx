@@ -61,7 +61,7 @@ In GitHub Releases, create a release for the existing tag, write the complete cu
 gh workflow run publish.yml --ref vX.Y.Z
 ```
 
-The workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes.
+The workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes and dispatches the Website workflow for the same tag, because a release published by the workflow's own token does not trigger it.
 
 The visibility wait gives each package ten minutes by default; the registry took three to four minutes to expose the beta 5 packages. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS`, a positive integer number of milliseconds, overrides that limit for a run of `pnpm release` or of the publish scripts, and an invalid value fails the publish before anything is uploaded.
 
