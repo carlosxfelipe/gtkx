@@ -75,9 +75,11 @@ Adding a new native element should use these primitives. It must not require tea
 
 Application and component code should instantiate GObjects through JSX. This applies to non-widget GObjects as well as visible widgets. Express their relationships in the declarative tree so React controls their creation, updates, and removal.
 
-The exception is a synchronous GTK signal that requires a newly created GObject as an immediate return value or out parameter. That operation occurs outside the React render cycle and must provide the object before the signal handler returns.
+A synchronous GTK signal that requires a newly created GObject as an immediate return value or out parameter is exempt. That operation occurs outside the React render cycle and must provide the object before the signal handler returns.
 
-Ordinary event handlers, effects, setup code, and helper functions do not broaden that exception. Convenience or the existence of a native constructor is not a reason to create objects imperatively.
+Ephemeral toasts are also exempt: `useToast().show()` creates and submits an `Adw.Toast` imperatively, and the overlay manages its presentation and dismissal. Toasts do not need reconciliation. Persistent component models still belong in the declarative tree.
+
+Ordinary event handlers, effects, setup code, and helper functions do not broaden these exceptions. Convenience or the existence of a native constructor is not a reason to create objects imperatively.
 
 ## Use one source of truth
 
@@ -147,9 +149,9 @@ Use clear names, direct control flow, and small, well-defined responsibilities s
 
 GTKX is GLib-first, so omit the `G` prefix from our own identifiers: use `useObjectValue`, for example. GTK prefixes are welcome when they make a name clearer. Preserve upstream names when referencing native APIs.
 
-Reserve code comments for public API documentation. Explain why an API or constraint exists and what consumers need to understand about its contract. Do not narrate what the code already does.
+Reserve code comments for public API documentation and TODO/FIXME notes. Explain why an API or constraint exists and what consumers need to understand about its contract. Do not narrate what the code already does. For upstream workarounds, explain why the workaround is needed and link a tracking issue in the GTKX repository.
 
-Comments must describe the current API without recounting earlier implementations. Deprecation documentation is the exception, where the transition is part of the public contract.
+Public API documentation must describe the current API without recounting earlier implementations. Deprecation documentation is the exception, where the transition is part of the public contract.
 
 ## Write focused, consistent documentation
 

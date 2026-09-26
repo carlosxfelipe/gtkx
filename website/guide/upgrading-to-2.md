@@ -60,9 +60,15 @@ import { AdwHeaderBar } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 ```
 
-Adwaita components now come from the main components package. Import `ComboRow`, `ToastProvider`, `useToast`, and `useToastOverlay` from `@gtkx/components` instead of `@gtkx/components/adw`. The internal `@gtkx/react/adw` subpath is also removed; `@gtkx/react` registers Adwaita elements itself.
+Adwaita components now come from the main components package. Import `ComboRow`, `ToastProvider`, and `useToast` from `@gtkx/components` instead of `@gtkx/components/adw`. The internal `@gtkx/react/adw` subpath is also removed; `@gtkx/react` registers Adwaita elements itself.
+
+Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
+
+The `@gtkx/native` root no longer exports `armParentDeath`, `addLogListener`, `removeLogListener`, or `__napiBindingTarget`. Subscribe to native logs with `onLog(listener)` and release the subscription with `unsubscribe()`. Process supervision remains internal.
+
+The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
 ## Move GObject ownership into JSX
 

@@ -53,13 +53,8 @@ test("an allocation carrying a boxed gtype exposes the type tag it was initializ
     expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, [encoder.encode("gint")]).value);
 });
 
-test("a registered non-boxed gtype allocates plain writable memory", () => {
-    const block = alloc(16, resolveType(GOBJECT, "g_object_get_type"));
-
-    write(block, { kind: "int32" }, 4, 321);
-
-    expect(read(block, { kind: "int32" }, 0)).toBe(0);
-    expect(read(block, { kind: "int32" }, 4)).toBe(321);
+test("a registered non-boxed gtype cannot allocate boxed storage", () => {
+    expect(() => alloc(16, resolveType(GOBJECT, "g_object_get_type"))).toThrow();
 });
 
 test("a read through a zero-sized allocation throws", () => {
@@ -154,12 +149,10 @@ test("the bigint codecs store their extremes", () => {
     expect(read(block, { kind: "biguint64" }, 16)).toBe(18_446_744_073_709_551_615n);
 });
 
-test("a bigint slot accepts a plain number", () => {
+test("a bigint slot rejects a plain number", () => {
     const block = alloc(8);
 
-    write(block, { kind: "bigint64" }, 0, 7);
-
-    expect(read(block, { kind: "bigint64" }, 0)).toBe(7n);
+    expect(() => write(block, { kind: "bigint64" }, 0, 7)).toThrow();
 });
 
 test("float64 round-trips exactly", () => {
