@@ -55,7 +55,7 @@
             "cache": true
         },
         "_lint:codescythe": {
-            "command": "tsx scripts/codescythe.ts",
+            "command": "node scripts/check-unused-code.ts",
             "cache": true,
             "dependsOn": ["bindings", "@gtkx/gl:codegen"],
             "inputs": [
@@ -139,13 +139,14 @@
             "inputs": ["default", "^production", "{workspaceRoot}/packages/native/tools/**/*"]
         },
         "_lint:eslint": {
-            "command": "eslint scripts",
+            "command": "eslint packages/native/tools",
             "cache": true,
             "dependsOn": ["@gtkx/utils:build"],
             "inputs": [
                 "default",
                 "^production",
                 "sharedGlobals",
+                "{workspaceRoot}/packages/native/tools/**/*",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/pnpm-lock.yaml"
             ],
