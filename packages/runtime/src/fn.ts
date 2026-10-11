@@ -1,9 +1,10 @@
-import type { CallDescriptor, ExternalObject, Handle, Ref } from "@gtkx/native";
-import { bind as nativeBind } from "@gtkx/native";
+import type { BoundCall, ExternalObject, Handle, Ref } from "./native.js";
+import { bind as nativeBind } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { createCall } from "./call.js";
+import { callLayout } from "./call-layout.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, isGtypeDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
@@ -253,8 +254,9 @@ const directCallable = (
 };
 
 function fromNativeCallable(
-    descriptor: ExternalObject<CallDescriptor>,
+    descriptor: BoundCall,
     spec: FnSpec,
+    argDescriptors: Descriptor[],
     getRefSeeds?: () => RefSeeds | undefined,
 ): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, canThrow = false } = spec;
@@ -263,7 +265,7 @@ function fromNativeCallable(
     const outPlans = plans.filter((plan) => plan.isOutParam);
     const arePassThrough = plans.every((plan, index) => isPassThroughPlan(plan, index));
     const readReturn = returnReader(spec);
-    const invoke = createCall(descriptor, buildNativeArgTypes(args, canThrow), returnDescriptor);
+    const invoke = createCall(descriptor, argDescriptors, returnDescriptor);
 
     if (!canThrow && arePassThrough) {
         return directCallable(invoke, readReturn, hasPrimary, plans);
@@ -306,10 +308,10 @@ const bindNativeCallable = (
         symbol,
         nativeArgTypes.map((argument) => toAbi(argument)),
         toAbi(spec.returns),
-        spec.fixedArgCount,
+        callLayout(nativeArgTypes, spec.fixedArgCount),
     );
 
-    return fromNativeCallable(descriptor, spec);
+    return fromNativeCallable(descriptor, spec, nativeArgTypes);
 };
 
 /**

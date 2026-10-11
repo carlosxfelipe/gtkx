@@ -6,9 +6,10 @@ import {
     getType,
     type Handle,
     type Ref,
-} from "@gtkx/native";
+} from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { createCall } from "./call.js";
+import { callLayout } from "./call-layout.js";
 import {
     type ArrayDescriptor,
     type BoxedDescriptor,
@@ -156,6 +157,7 @@ function decodedCallbackCallable(
                 argDescriptors.map((argument) => toAbi(argument)),
                 toAbi(descriptor.returnDescriptor),
                 "decoded callback",
+                callLayout(argDescriptors),
             ),
             argDescriptors,
             descriptor.returnDescriptor,

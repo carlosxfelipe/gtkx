@@ -1,51 +1,45 @@
-import "./bootstrap.js";
-import { addLogListener, removeLogListener } from "./index.js";
-
-const onLog = (listener) => {
-    const id = addLogListener(listener);
-
-    return {
-        unsubscribe: () => {
-            removeLogListener(id);
-        },
-    };
-};
-
 export {
     alloc,
-    allocField,
     ArrayKind,
-    bind,
+    attachCall,
     bindField,
-    bindFunctionPointer,
-    bindVfunc,
     call,
+    compileCall,
+    compileReference,
+    compileVfuncSlot,
     CallbackScope,
     copy,
+    createFunctionResolver,
+    createRecordConverter,
+    createReferenceStorage,
+    createTypeResolver,
+    disposeHandle,
     DestroyNotifyKind,
     ElementOwnership,
-    getFundamentalWrapper,
+    getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,
     getType,
     getTypeClass,
     getWrapper,
     init,
+    installLogSink,
+    logSubscriptionFence,
     keepAlive,
     newObject,
+    openLibrary,
     Ownership,
     ownMatchInfo,
     quit,
-    read,
     readField,
     readFunctionPointer,
+    readReferenceStorage,
+    readVfuncSlot,
     registerClass,
-    resolveFunction,
-    resolveType,
-    setFundamentalWrapper,
+    ReferenceMode,
+    resolveSymbol,
     setWrapper,
     setWrapperBorrow,
-    write,
     writeField,
+    writeReferenceStorage,
 } from "./index.js";
-export { onLog };

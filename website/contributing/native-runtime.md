@@ -16,14 +16,18 @@ The central contract is a descriptor: a structured description of a value's nati
 A call passes through these stages:
 
 1. A generated adapter presents the public JavaScript signature and supplies a runtime function specification.
-2. [`runtime/src/fn.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/fn.ts) plans inputs and outputs and wraps callbacks. Shared runtime conversion plans encode strings as UTF-8 bytes, normalize Number inputs for bigint values, and lower booleans, Unicode characters, enums, and flags to their ABI representations.
-3. [`native/src/api/bind.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/bind.rs) turns descriptors into codecs and a libffi call interface. It records the target symbol, vtable slot, or function pointer.
+2. [`runtime/src/fn.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/fn.ts) plans inputs and outputs and wraps callbacks. Shared runtime conversion plans validate public numbers, encode strings as UTF-8 bytes, prepare owned reference storage, and lower booleans, Unicode characters, enums, and flags to their ABI representations.
+3. [`native/src/api/bind.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/bind.rs) turns descriptors into codecs and a libffi call interface. Runtime resolves the symbol or vtable slot lazily, then attaches its executable handle to the compiled signature.
 4. [`native/src/api/call.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/call.rs) prepares native storage, invokes the target, and returns the result and output values while settling ownership transfers.
 5. The TypeScript runtime converts returned values, updates JavaScript references, reports errors, and packs surfaced outputs into the public return shape.
 
-The two main reusable pieces are the compiled call interface and the resolved symbol. A lazy runtime function specification defers creating the bound callable until its first invocation. The native call descriptor then caches its resolved target. Shared-library loading and symbol lookup are centralized in [`ffi/library_cache.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/library_cache.rs).
+The two main reusable pieces are the compiled call interface and the resolved symbol. A lazy runtime function specification defers creating the bound callable until its first invocation. [`runtime/src/native-bindings.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/native-bindings.ts) chooses the first loadable shared-library candidate and caches the attached target after successful resolution. Native [`ffi/library_cache.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/library_cache.rs) opens individual libraries with process-wide lifetime and resolves symbols through owned library handles. A missing symbol never causes a search in a later candidate library.
 
 Native calls also check argument counts, and object codecs check declared native types when those types can be resolved.
+
+The runtime composes unbound field reads and writes from compiled native field accessors and allocates scalar output storage by its ABI width. It also resolves and caches `get_type` results through ordinary function-pointer calls; native optional symbol lookup distinguishes absent symbols from library-loading failures. Descriptors arrive at the addon with explicit storage flags, element ownership, and callback scope decisions, including inside record ABI layouts. Native validation enforces their layout and lifetime constraints.
+
+Runtime also expands callback user-data and destroy-notify arguments, assigns their native positions, and calculates the expanded fixed-argument count for variadic calls. Reordering cannot move arguments across the fixed/variadic boundary. Native compilation validates the supplied permutation against the actual ABI argument count before building the call interface.
 
 ## Values, temporary storage, and ownership
 
@@ -54,9 +58,13 @@ Tracked GObjects reuse an existing JavaScript wrapper when one is available. Thi
 
 Wrapper finalization schedules cleanup through the GLib context, including removal of the toggle reference. The implementation also tracks replacement generations so cleanup for an older wrapper cannot remove a newer association. See [`value/wrapper.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/value/wrapper.rs) and [`ffi/codec/object.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/codec/object.rs).
 
+Fundamental wrappers use a separate runtime weak cache. Native supplies a live instance identity and whether the handle owns a reference. Only owned handles populate the cache; valid borrowed handles can find an existing owner. Cache lookup checks the wrapper's current handle, handle replacement removes its old registration, and finalizer tokens prevent delayed cleanup from deleting a newer entry. Native still controls reference acquisition, release, and borrow invalidation.
+
 Some callback arguments borrow memory valid only for the current invocation. A borrow scope records their handles; leaving the invocation invalidates those handles, including on an error path. Field views inherit their owner's invalidation. Holding the JavaScript wrapper after that point does not extend the native borrow.
 
 Executable targets also use opaque handles. Library symbols remain available with their library, call-scoped callbacks expire when their enclosing call ends, and one-shot callback handles expire before invocation. The runtime passes those handles directly to the native binding API.
+
+Runtime supplies lazy GType and lifecycle-function resolvers through [`descriptor-lifecycle.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/descriptor-lifecycle.ts). Native activates them when a codec needs the operation, including during output or callback decoding, so types registered by the callee remain visible. Unregistered types and failed lookups can be retried. Resolved lifecycle functions must come from permanently loaded libraries; native retains their handles, and destruction uses native function pointers without invoking JavaScript. Resolver callbacks belong to their Node environment and are released during environment teardown.
 
 ## Callbacks and signals
 
@@ -76,7 +84,7 @@ Promise wrappers for GIO-style operations remain a separate layer. [`promisify.t
 
 ## GLib inside Node's event loop
 
-Importing the public native package runs its bootstrap and initializes the native environment. [`runloop.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/runloop.rs) acquires GLib's default main context on that Node thread and connects it to the thread's libuv loop.
+Importing the runtime initializes the native addon through [`runtime/src/native.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/native.ts) before runtime modules create bindings. Importing the addon alone does not acquire a GLib context. [`runloop.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/runloop.rs) acquires GLib's default main context on that Node thread and connects it to the thread's libuv loop.
 
 The integration uses three kinds of libuv handle:
 
@@ -86,7 +94,7 @@ The integration uses three kinds of libuv handle:
 | Poll    | Wake libuv when file descriptors requested by GLib become ready. |
 | Timer   | Wake libuv for GLib timeouts or immediately ready sources.       |
 
-Each prepare callback iterates the GLib context without blocking, stopping when there is no work or the current four-millisecond dispatch budget expires. It then queries GLib's next deadline and descriptors, updates poll handles, and arms the timer. The budget limits a batch of iterations; it cannot interrupt a long-running callback. Native dispatch runs within Node callback scopes so JavaScript callbacks and microtasks participate in Node's execution model.
+Runtime supplies a four-millisecond dispatch budget during initialization. Each prepare callback iterates the GLib context without blocking, stopping when there is no work or that budget expires. It then queries GLib's next deadline and descriptors, updates poll handles, and arms the timer. The budget limits a batch of iterations; it cannot interrupt a long-running callback. Native dispatch runs within Node callback scopes so JavaScript callbacks and microtasks participate in Node's execution model.
 
 The handles are normally unreferenced, so merely importing GTKX does not keep an otherwise idle Node process alive. Application activation requests a keep-alive reference; shutdown releases it. Environment cleanup releases the event-loop integration and its dispatch resources.
 
@@ -105,3 +113,116 @@ Runtime shutdown runs registered exit callbacks and releases native keep-alive b
 Errors need to cross the same boundaries as successful results. Throwing native functions report `GError` through an out parameter that the TypeScript runtime turns into an exception. Runtime converts callback exceptions into owned `GError` values when the signature supplies an error slot. Native retains error-slot ABI metadata, validates and copies the supplied handle, and preserves the original exception when the error slot is absent or occupied. The direct addon transport is `CallbackFailure` in [`native/main.d.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/main.d.ts). GLib criticals raised during a bound call are collected and reported after the call returns, and Rust entry points guard unwinding at FFI boundaries.
 
 The relevant sources are [`runtime/src/error.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/error.ts), [`native/src/host/log_writer.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/log_writer.rs), and [`native/src/host/panic_handler.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/panic_handler.rs). The [Error Handling guide](/v2/guide/error-handling) explains native exceptions, promise rejections, and failures that terminate the process. React error boundaries do not catch arbitrary signal-handler exceptions or asynchronous failures.
+
+## Native boundary audit
+
+The native package is an implementation detail, so its interface can change whenever a smaller native primitive lets runtime own JavaScript behavior. The boundary is responsibility for ABI correctness and memory lifetime, rather than whether a function happens to contain an `unsafe` block. This audit includes the root exports, internal exports, and addon-loading helper.
+
+### Export dispositions
+
+| Exports                                                                  | Disposition                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read`, `write`                                                          | Removed from native; runtime composes compiled field accessors.                                                                                                                                                                                     |
+| `allocField`                                                             | Removed from native; runtime chooses scalar storage widths and calls `alloc`.                                                                                                                                                                       |
+| `resolveType`                                                            | Removed from native; runtime resolves, invokes, and caches `get_type`. Codec type discovery also uses lazy runtime resolvers.                                                                                                                       |
+| `getFundamentalWrapper`, `setFundamentalWrapper`                         | Removed from native; runtime owns weak identity caching over `getFundamentalIdentity`.                                                                                                                                                              |
+| `onLog`                                                                  | Runtime owns subscriptions and fanout over one native sink per environment. Native serializes copied records and subscription fences.                                                                                                               |
+| `bind`, `bindFunctionPointer`, `bindVfunc`                               | Removed from native; runtime composes `compileCall`, `attachCall`, symbol handles, and checked vtable slots, preserving eager signature validation and lazy targets.                                                                                |
+| `registerClass`                                                          | Runtime supplies class flags, empty override/interface lists, and callback defaults. Native retains irreversible GType registration, size/slot checks, and permanent callback storage.                                                              |
+| `init`                                                                   | Runtime owns automatic initialization and supplies the dispatch budget. Native retains ordered environment and GLib-context installation. Scheduler measurements are discussed below.                                                               |
+| `alloc`, `bindField`, `readField`, `writeField`, `call`, `encodePointer` | Keep native allocation, ABI access, pointer leases, and transfer transactions. Runtime owns public numeric/collection representation and prepares explicit reference storage.                                                                       |
+| `copy`                                                                   | Keep native acquisition and destruction. Runtime supplies synchronous foreign-record conversion; Cairo copying uses ordinary bindings inside that scope.                                                                                            |
+| `resolveFunction`, `resolveFunctionOptional`, `readFunctionPointer`      | Named resolution moved to runtime over `openLibrary` and `resolveSymbol`. Native keeps owned executable handles and checked memory access.                                                                                                          |
+| `getType`, `getTypeClass`                                                | Keep native instance-header access, GType validation, and class-reference ownership. Runtime already chooses wrapper classes and caches public type lookup.                                                                                         |
+| `getWrapper`, `setWrapper`, `setWrapperBorrow`                           | Keep GObject toggle references, strong/weak N-API transitions, dependent borrows, and cleanup ordering. These are not equivalent to the fundamental weak cache.                                                                                     |
+| `newObject`                                                              | Keep construction transaction: pending wrappers during early instance initialization, singleton reuse, temporary GValues, floating references, and callback failure cleanup. No independent policy extraction currently justifies another protocol. |
+| `retainPropertyPointer`                                                  | Keep attachment ownership tied to native object replacement/finalization. A JavaScript weak map cannot provide this lifetime. A generic named attachment API would change spelling without removing the native requirement.                         |
+| `getMatchInfoType`, `ownMatchInfo`, `getMatchInfoBase`                   | Keep the boxed holder that owns both match information and its subject, including copies and borrowed views. A JavaScript association cannot cover native-held copies.                                                                              |
+| `keepAlive`, `quit`                                                      | Keep ref/unref and teardown of the existing native event-loop handles. Runtime already owns exit callbacks and error aggregation.                                                                                                                   |
+| `armParentDeath`                                                         | Runtime composes direct-parent arming with process-owner policy in utils. Native owns cancellable pidfd watches; an independent worker handles unsupported pidfds.                                                                                  |
+| `resolveBinding`                                                         | Already JavaScript packaging logic; keep with the addon loader, which must work without initializing runtime.                                                                                                                                       |
+
+The retained functions have been investigated and have a specific native ownership or ABI responsibility. All bounded work packages below are implemented. The full scheduler split was evaluated with an isolated benchmark and is not adopted; native retains the scheduling machinery described below.
+
+### Descriptor normalization
+
+Runtime owns callback and class-registration defaults, storage flags, reference direction, and array element ownership. Public descriptors remain concise, while the native schema requires explicit values. Function arguments, return values, fields, callbacks, references, nested collections, and record `abiFields` share the runtime conversion plans. Bootstrap scalar bindings already supply complete descriptors; enum lookup lowers its pointer and string descriptors when invoked, avoiding module-initialization cycles.
+
+Native retains validation of ABI layouts, ownership combinations, callback retention, extents, and recursion bounds, without duplicating descriptor defaults. Runtime rejects cyclic descriptors before recursive lowering. ABI-validation regressions exercise public scalar descriptors inside boxed and struct record layouts, malformed nested fields, depth limits, and recovery after a cycle is corrected. Native validation error formatting remains unchanged.
+
+Argument layout preserves fixed-prefix expansion and rejects permutations that move hidden arguments across the fixed/variadic boundary. A GIO variadic regression combines a callback in the fixed prefix with integer and floating arguments, verifies callback delivery and the formatted error, and covers implicit and explicit user-data positions. Reordering within either region remains supported.
+
+### Numeric policy and collection transport
+
+Runtime owns Number admission, public integer ranges, finite float32 overflow checks, and Number/bigint conversion. Number64 retains the inclusive `-2^53..2^53` interval. Float32 still accepts NaN and infinities. Native retains validation that normalized values fit their ABI storage; it no longer implements the public Number64 interval or float32 overflow policy.
+
+Native 64-bit integer descriptors carry bigint values and an explicit `isDirectWord` flag. Runtime sets it for public Number64 descriptors, preserving direct hashing and signed pointer-word list entries. Ordinary bigint hash values still use allocated scalars, bigint keys remain unsupported, and ordinary bigint pointer lists retain their nonnegative-word requirement. Contiguous C/GArray storage and matching typed-buffer passthrough remain distinct from pointer collections. Typed-array offsets and writes are preserved; incompatible views are rejected.
+
+Array lengths are extracted exactly from integer and bigint arguments or references, then checked against platform sizes and native extents. Runtime validates hash-entry tuples and converts iterables before native allocation. Native retains traversal, terminators, stride/extent checks, backing-store validity, ownership/destructor pairing, duplicate replacement, and partial-encoding rollback. Nested records, references, callbacks, and collection elements use the same runtime conversion plans.
+
+Coverage includes Number64 direct-word entries, negative list words, exact bigint lengths, overflow when decoding returned values, typed-array subview mutation, duplicate normalized keys, asynchronous buffer retention, and failed nested conversion under sanitizers.
+
+### Library handles, lifecycle resolution, and binding targets
+
+Native provides owned `openLibrary(candidate)` and `resolveSymbol(libraryHandle, symbol, optional)` primitives. Runtime chooses comma-separated candidates and caches the chosen handle. The **first loadable library** rule is preserved: a missing symbol does not cause a search in subsequent candidates. Native retains the loader flags and process-wide library lifetime. Optional resolution suppresses only missing symbols; loading and malformed-name errors propagate.
+
+Runtime resolves descriptor GTypes and copy/ref/free operations through lazy resolver handles. Native activates them at the codec's acquisition boundary, preserving registration after descriptor creation and during a native call. Successful resolutions are cached; unregistered names and failed function lookups remain retryable. Native validates types, ref/unref pairs, and reusable library-backed function handles. Resolved destruction operations remain callable after their JavaScript wrappers or environment are released. Foreign-record copy callbacks use the synchronous acquisition scope described below.
+
+`compileCall` validates and compiles a signature independently of its target; `attachCall` retains the signature and executable handle. Runtime caches the attachment after successful lazy symbol or vtable resolution. `compileVfuncSlot` validates class/interface kinds and slot extents eagerly, and `readVfuncSlot` acquires the implementation lazily. Function handles retain owned class or default-interface references; class handles returned by `getTypeClass` also release their references when no dependent handle remains.
+
+Integration coverage includes late type registration, missing lifecycle symbols at use, invalid ref/unref pairs, handles surviving collection, separate environments and shutdown, lazy missing targets, and interface/class slot failures. Field and pointer encoding isolate resolver exceptions so JavaScript can catch a nested failure without poisoning an enclosing native callback. Native codecs no longer select libraries or resolve lifecycle names.
+
+### Non-scalar reference storage
+
+Scalar references use runtime-owned allocated storage. Non-scalar references use a compiled `ReferenceDescriptor` and owned `ReferenceStorage` carrying the slot, seed storage, extent/capacity, and pending transfers. Runtime extracts public `{ value }` objects and explicitly selects slot, inout, fixed-byte, caller-array, caller-container, or seeded-array storage.
+
+Native validates storage against its compiled descriptor and consumes each prepared transaction once. The storage initially retains normalized seeds and their native owners; its matching call prepares ABI memory inside the call's lease scope, preserving synchronous typed-array views. Native distinguishes unchanged/null/replacement pointers, adopts or copies replacements, and settles transfers. Output decoding visits remaining outputs even after an earlier conversion fails, so their native allocations are released.
+
+Asynchronous non-scalar references must borrow the output and its elements: the synchronous result API cannot release transferred outputs before completion. Native rejects incompatible transfer contracts before calling C and retains borrowed reference transactions, including independent buffer copies and native owners, until completion.
+
+Callback references use opaque scoped storage. Runtime reads the normalized seed, exposes the public reference object to the callback, and supplies its converted replacement; native writes each ABI output and retains its acquired storage. Output writes are sequential, preserving the existing callback contract. Retained callback storage rejects access after the invocation ends. Coverage exercises replacement, null, failed result conversion, descriptor mismatch, reuse, capacity overflow, and synchronous and asynchronous owner retention.
+
+### Log subscriptions
+
+Runtime owns subscriptions and fanout over one native sink per environment. Native enqueueing assigns a sequence, and subscription fences use the same synchronization. Each subscription covers a sequence interval. Unsubscribe closes the interval and queues a fence marker, allowing already-enqueued records to arrive before runtime releases the callback, even when no further logs are produced.
+
+Native retains copying of borrowed GLib fields, thread-safe delivery, environment teardown, writer installation, fatal reporting, and nested synchronous critical traps. Runtime reports listener exceptions as uncaught microtask errors after fanout, allowing other subscriptions to receive their records.
+
+Integration coverage includes emit-then-unsubscribe before yielding, subscribe-after-emit, reentrant changes, multiple producer threads, throwing listeners, collection after the last fence, worker teardown, nested trapped criticals, and fatal subprocess diagnostics.
+
+### Cairo path conversion
+
+Runtime owns the surface/context/append/copy/status-check algorithm through ordinary Cairo bindings and deterministic cleanup. A native `RecordConverter` invokes this conversion synchronously while source leases and call storage remain alive. Its borrowed source handle expires when conversion returns or throws.
+
+Native accepts only a directly owned returned record with the declared destructor, then moves that ownership into the transfer transaction and invalidates the returned handle's aliases. Adoption, destruction, and rollback remain native. Borrowed outputs and transfer-full inputs, including callback returns, share this acquisition boundary. Active native record leases prevent explicit disposal or ownership movement while an operation still uses the record.
+
+Coverage includes source-scope expiry, full-transfer callback paths, failed status cleanup, reentrant and throwing conversion, destructor mismatch, and an original value surviving failed transfer. The former Rust Cairo copy algorithm has been removed.
+
+### Process supervision
+
+CLI captures the initial process-group owner through utils, which owns ancestry, start-time, process-state, and `/proc` policy. Runtime composes this policy with narrow native operations to arm `PR_SET_PDEATHSIG` with an immediate parent recheck, open an owned pidfd, and activate a cancellable monitor independent of JavaScript's main loop. Utils rechecks process identity, group membership, and ancestry around watch creation and activation to reject startup and PID-reuse races.
+
+Unsupported or forbidden pidfds use a dedicated worker importing only process-status utilities and its guard protocol. An atomic readiness handshake confirms activation before startup succeeds. Both monitoring paths deliver SIGTERM even when the application's main loop is blocked; JavaScript cleanup still requires main-loop progress. Native watch closure cancels and joins its monitoring thread, and environment cleanup releases active watches through one registry per environment. Fallback cancellation atomically prevents new signals and waits for any already-claimed signal before returning.
+
+Real subprocess coverage includes direct-parent death, ancestor group-owner death while the direct parent lives, unrelated owners, wrong start times, stopped and zombie owners, death during watch opening and activation, pidfd fallback, blocked main loops, and descriptor cleanup after explicit closure or worker termination. Exit-signal coverage remains in place.
+
+### Event-loop scheduling
+
+Runtime owns bootstrap orchestration; native `init` remains ordered installation of the Node environment and GLib context. Imports must initialize through a shared runtime adapter before leaf modules create bindings. Native cleanup hooks remain essential when worker termination prevents JavaScript cleanup.
+
+Runtime supplies the dispatch budget, currently four milliseconds. Native validates it before initialization and retains GLib context ownership, readiness storage, libuv handle reconciliation and close callbacks, N-API callback/error scopes, thread confinement, and unconditional teardown.
+
+Integration coverage includes worker termination/reacquisition and competing-worker rejection, descriptor removal/reuse, unwatchable descriptors, idle/timeouts, JavaScript timer fairness under continuously ready GLib sources, and quit during dispatch. Readiness tests await source callbacks without periodic JavaScript polling that could mask missing native wakeups. Existing keep-alive, quit-cleanup, exit-signal, and asynchronous callback suites also pass.
+
+The reproducible experiment in [`native/tools/scheduler-benchmark.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/tools/scheduler-benchmark.ts) compares native policy with a copied readiness snapshot and one JavaScript callback per cycle. Run `node packages/native/tools/scheduler-benchmark.ts` from the repository root. Both paths perform real GLib iteration, prepare/query/check, and libuv poll/timer updates. After warmup, five interleaved samples measure 10,000 idle cycles or 100 continuously ready cycles with the four-millisecond budget.
+
+Representative local results on Linux x64 with Node 26.8.2, in microseconds per cycle:
+
+| Requested descriptors | Workload           | Native policy | JavaScript policy | Added cost |
+| --------------------- | ------------------ | ------------- | ----------------- | ---------- |
+| 0                     | Idle               | 0.64          | 1.79              | 1.15       |
+| 8                     | Idle               | 3.88          | 7.92              | 4.05       |
+| 64                    | Idle               | 29.02         | 52.45             | 23.43      |
+| 8                     | Continuously ready | 4004.03       | 4008.13           | 4.11       |
+
+The copied policy adds substantial relative cost to idle cycles and about 0.10% to a saturated four-millisecond cycle. This favorable prototype leaves poller reconciliation native and uses fewer crossings than a complete split. It is not an application-latency benchmark and does not evaluate an optimized zero-copy snapshot design. The current decision retains native scheduling machinery; a future extraction should demonstrate a concrete benefit with owned snapshots and end-to-end measurements. No bounded migration work remains.

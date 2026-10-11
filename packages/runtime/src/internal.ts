@@ -66,5 +66,5 @@ export {
     type NativeHandle,
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
-export { keepAlive, setWrapperBorrow } from "@gtkx/native";
-export { armParentDeath } from "@gtkx/native/internal";
+export { keepAlive, setWrapperBorrow } from "./native.js";
+export { armParentDeath } from "./parent-death.js";

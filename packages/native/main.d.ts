@@ -1,41 +1,49 @@
 export {
     alloc,
-    allocField,
-    bind,
+    attachCall,
     bindField,
-    bindFunctionPointer,
-    bindVfunc,
     call,
+    compileCall,
+    compileReference,
+    compileVfuncSlot,
     copy,
-    getFundamentalWrapper,
+    createFunctionResolver,
+    createRecordConverter,
+    createReferenceStorage,
+    createTypeResolver,
+    disposeHandle,
+    getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,
     getType,
     getTypeClass,
     getWrapper,
     init,
+    installLogSink,
+    logSubscriptionFence,
     keepAlive,
     newObject,
+    openLibrary,
     ownMatchInfo,
     quit,
-    read,
     readField,
     readFunctionPointer,
+    readReferenceStorage,
+    readVfuncSlot,
     registerClass,
-    resolveFunction,
-    resolveType,
-    setFundamentalWrapper,
+    resolveSymbol,
     setWrapper,
     setWrapperBorrow,
-    write,
     writeField,
+    writeReferenceStorage,
 } from "./index.js";
 export type {
     ArrayKind,
-    BindVfuncOptions,
     CallbackFailure,
     CallbackScope,
     CallDescriptor,
+    CallSignature,
+    CallLayout,
     CallOutput,
     CallResult,
     DecodedCallback,
@@ -44,26 +52,51 @@ export type {
     ElementOwnership,
     ExternalObject,
     FieldDescriptor,
+    FundamentalIdentity,
+    FunctionResolver,
     Handle,
+    LibraryHandle,
     Ownership,
+    RecordConverter,
+    ReferenceDescriptor,
+    ReferenceMode,
+    ReferenceStorage,
     Ref,
     RegisterClassInterface,
     RegisterClassOptions,
     RegisterClassVfunc,
+    TypeResolver,
+    VfuncSlot,
+    VfuncSlotOptions,
 } from "./index.js";
 
 declare module "./index.js" {
     /**
      * An opaque handle to a native memory region: a GObject, a boxed value, or a raw allocation.
-     * Produced by `alloc` and consumed by the memory and wrapper functions (`read`, `write`,
+     * Produced by `alloc` and consumed by the memory and wrapper functions (`readField`, `writeField`,
      * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
     /**
-     * An opaque, precompiled binding of a native function, produced by `bind` and passed to `call`.
-     * It stores the target symbol and argument/return marshalling; the symbol resolves on first call.
+     * An opaque binding of a compiled signature to an owned executable handle, passed to `call`.
      */
     export type CallDescriptor = { _opaque: "CallDescriptor" };
+    /** An ABI signature compiled independently of its executable target. */
+    export type CallSignature = { _opaque: "CallSignature" };
+    /** A reference to a shared library that remains loaded for the life of the process. */
+    export type LibraryHandle = { _opaque: "LibraryHandle" };
+    /** A validated vtable position whose implementation is acquired when read. */
+    export type VfuncSlot = { _opaque: "VfuncSlot" };
+    /** An environment-bound lazy GType resolver that retries unregistered types. */
+    export type TypeResolver = { _opaque: "TypeResolver" };
+    /** An environment-bound lazy resolver for a permanent native lifecycle function. */
+    export type FunctionResolver = { _opaque: "FunctionResolver" };
+    /** A synchronous record acquisition callback invoked while native source storage is leased. */
+    export type RecordConverter = { _opaque: "RecordConverter" };
+    /** A compiled non-scalar reference layout, paired with storage prepared for that layout. */
+    export type ReferenceDescriptor = { _opaque: "ReferenceDescriptor" };
+    /** An owned call transaction or a scoped callback output slot. */
+    export type ReferenceStorage = { _opaque: "ReferenceStorage" };
     /**
      * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to
      * `readField` and `writeField`. It captures the marshalling of the field's bytes; the byte
@@ -73,20 +106,3 @@ declare module "./index.js" {
     export type Ref = { value: unknown };
     export type CallbackFailure = { nativeError: ExternalObject<Handle>; thrown: unknown };
 }
-
-type LogLevel = "error" | "critical" | "warning" | "message" | "info" | "debug";
-
-type LogListener = (level: LogLevel, domain: string, message: string) => void;
-
-type LogSubscription = { unsubscribe(): void };
-
-/**
- * Subscribes to GLib logs from every thread. The listener receives the level, domain, and message.
- * Records reach JavaScript asynchronously; yield to the event loop before checking collected logs.
- *
- * Fatal logs, including levels made fatal by `logSetAlwaysFatal`, abort before delivery and never
- * reach the listener. Unsubscribing stops new records but leaves already queued deliveries intact.
- */
-declare function onLog(listener: LogListener): LogSubscription;
-
-export { type LogLevel, type LogListener, type LogSubscription, onLog };
