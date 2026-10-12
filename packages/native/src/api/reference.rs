@@ -6,10 +6,10 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::bind::CallSignature;
 use crate::api::native_result;
 use crate::ffi::Stash;
 use crate::ffi::codec::{Codec, RefCodec};
-use crate::ffi::descriptor::Descriptor;
 use crate::host::callback_error::CallbackErrorScope;
 use crate::value::ClosureHandle;
 
@@ -23,18 +23,6 @@ pub enum ReferenceMode {
     CallerContainer,
     ArrayBuffer,
     ArraySlot,
-}
-
-#[derive(Debug, Clone)]
-pub struct ReferenceDescriptor {
-    pub(crate) codec: RefCodec,
-}
-
-impl FromNapiValue for ReferenceDescriptor {
-    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**external).clone())
-    }
 }
 
 thread_local! {
@@ -80,7 +68,14 @@ impl ReferenceSeed {
     }
 
     fn read<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
-        read_callback_value(env, &self.value)
+        let held = self.value.borrow();
+        let held = held
+            .as_ref()
+            .ok_or_else(|| Error::from_reason("The reference seed environment has ended"))?;
+        let array: Array<'_> = held.get(env)?;
+        array
+            .get::<Unknown<'_>>(0)?
+            .ok_or_else(|| Error::from_reason("Reference storage contains no value"))
     }
 }
 
@@ -94,45 +89,9 @@ struct ReferenceRequest {
 }
 
 #[derive(Debug)]
-enum ReferenceState {
-    Prepared(RefCell<Option<ReferenceRequest>>),
-    Callback(Rc<RefCell<Option<ClosureHandle>>>),
-}
-
-#[derive(Debug)]
 pub struct ReferenceStorage {
     identity: Rc<()>,
-    state: ReferenceState,
-}
-
-pub(crate) struct CallbackReference {
-    value: Rc<RefCell<Option<ClosureHandle>>>,
-}
-
-impl Drop for CallbackReference {
-    fn drop(&mut self) {
-        self.value.borrow_mut().take();
-    }
-}
-
-impl CallbackReference {
-    pub(crate) fn read<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
-        read_callback_value(env, &self.value)
-    }
-}
-
-fn read_callback_value<'e>(
-    env: &'e Env,
-    value: &RefCell<Option<ClosureHandle>>,
-) -> Result<Unknown<'e>> {
-    let held = value.borrow();
-    let held = held
-        .as_ref()
-        .ok_or_else(|| Error::from_reason("The reference storage borrow has ended"))?;
-    let array: Array<'_> = held.get(env)?;
-    array
-        .get::<Unknown<'_>>(0)?
-        .ok_or_else(|| Error::from_reason("Reference storage contains no value"))
+    request: RefCell<Option<ReferenceRequest>>,
 }
 
 impl ReferenceStorage {
@@ -146,10 +105,8 @@ impl ReferenceStorage {
             Rc::ptr_eq(&self.identity, identity),
             "Reference storage belongs to another descriptor"
         );
-        let ReferenceState::Prepared(storage) = &self.state else {
-            anyhow::bail!("Callback reference storage cannot be used as call argument storage")
-        };
-        let request = storage
+        let request = self
+            .request
             .borrow_mut()
             .take()
             .ok_or_else(|| anyhow::anyhow!("Reference storage has already been consumed"))?;
@@ -181,57 +138,35 @@ impl ReferenceStorage {
         }
         Ok(Stash::Storage(prepared))
     }
-
-    pub(crate) fn callback<'e>(
-        env: &'e Env,
-        codec: &RefCodec,
-        seed: Unknown<'e>,
-    ) -> Result<(Unknown<'e>, CallbackReference)> {
-        let mut array = env.create_array(1)?;
-        array.set(0, seed)?;
-        let value = Rc::new(RefCell::new(Some(ClosureHandle::from_js_value(
-            env, &array,
-        )?)));
-        let storage = Self {
-            identity: codec.identity(),
-            state: ReferenceState::Callback(Rc::clone(&value)),
-        };
-        Ok((
-            External::new(storage).into_unknown(env)?,
-            CallbackReference { value },
-        ))
-    }
 }
 
-/// Compiles the ABI and ownership contract for an owned non-scalar reference transaction.
-#[napi(catch_unwind)]
-pub fn compile_reference(
-    inner_descriptor: Descriptor,
-    inout: bool,
-) -> Result<External<ReferenceDescriptor>> {
-    let inner = inner_descriptor.into_codec()?;
-    if inner.is_scalar() {
-        return Err(Error::from_reason(
-            "Scalar references use allocated ABI storage",
-        ));
-    }
-    Ok(External::new(ReferenceDescriptor {
-        codec: RefCodec::new(inner, inout)?,
-    }))
-}
-
-/// Owns a normalized reference seed and explicit ABI mode. The matching call prepares storage
-/// within its lease scope, preserving synchronous buffer views and owning asynchronous buffers.
+/// Owns a normalized reference seed for an argument in a compiled call signature. The argument
+/// index precedes ABI expansion and reordering. The matching call prepares storage within its
+/// lease scope, preserving synchronous buffer views and owning asynchronous buffers.
 #[napi(catch_unwind)]
 pub fn create_reference_storage(
     env: Env,
-    descriptor: &External<ReferenceDescriptor>,
+    signature: &External<CallSignature>,
+    arg_index: u32,
     seed: Unknown<'_>,
     mode: ReferenceMode,
     capacity: Option<BigInt>,
 ) -> Result<External<ReferenceStorage>> {
     let _errors = CallbackErrorScope::open(env);
     let _leases = crate::handle::LeaseScope::open();
+    let codec = match signature.arg_codecs.get(arg_index as usize) {
+        Some(Codec::Ref(codec)) if !codec.inner_codec().is_scalar() => codec,
+        Some(_) => {
+            return Err(Error::from_reason(
+                "Reference storage requires a non-scalar reference argument",
+            ));
+        }
+        None => {
+            return Err(Error::from_reason(
+                "Reference argument index exceeds the compiled signature",
+            ));
+        }
+    };
     let capacity = capacity
         .map(|capacity| {
             let (negative, length, lossless) = capacity.get_u64();
@@ -245,65 +180,30 @@ pub fn create_reference_storage(
         })
         .transpose();
     let capacity = native_result("reference capacity", capacity)?;
-    native_result("reference storage", descriptor.codec.validate_mode(mode))?;
+    native_result("reference storage", codec.validate_mode(mode))?;
     let mut owners = Vec::new();
     native_result(
         "reference owners",
-        collect_seed_owners(descriptor.codec.inner_codec(), seed, &mut owners, true),
+        collect_seed_owners(codec.inner_codec(), seed, &mut owners, true),
     )?;
     let owners = owners
         .into_iter()
         .map(|owner| owner.retain_owned().unwrap_or(owner))
         .collect();
     let request = ReferenceRequest {
-        codec: descriptor.codec.clone(),
+        codec: codec.clone(),
         seed: ReferenceSeed::new(&env, seed)?,
         mode,
         capacity,
         owners,
     };
     Ok(External::new(ReferenceStorage {
-        identity: descriptor.codec.identity(),
-        state: ReferenceState::Prepared(RefCell::new(Some(request))),
+        identity: codec.identity(),
+        request: RefCell::new(Some(request)),
     }))
 }
 
-/// Reads normalized callback reference storage while its invocation remains active.
-#[napi(catch_unwind)]
-pub fn read_reference_storage<'e>(
-    env: &'e Env,
-    storage: &External<ReferenceStorage>,
-) -> Result<Unknown<'e>> {
-    let ReferenceState::Callback(value) = &storage.state else {
-        return Err(Error::from_reason(
-            "Only an active callback reference can be read",
-        ));
-    };
-    read_callback_value(env, value)
-}
-
-/// Replaces the normalized callback output, which is committed to native storage after the
-/// JavaScript callback returns successfully.
-#[napi(catch_unwind)]
-pub fn write_reference_storage(
-    env: Env,
-    storage: &External<ReferenceStorage>,
-    value: Unknown<'_>,
-) -> Result<()> {
-    let ReferenceState::Callback(held) = &storage.state else {
-        return Err(Error::from_reason(
-            "Only an active callback reference can be written",
-        ));
-    };
-    let held = held.borrow();
-    let held = held
-        .as_ref()
-        .ok_or_else(|| Error::from_reason("The reference storage borrow has ended"))?;
-    let mut array: Array<'_> = held.get(&env)?;
-    array.set(0, value)
-}
-
-fn collect_seed_owners(
+pub(crate) fn collect_seed_owners(
     codec: &Codec,
     seed: Unknown<'_>,
     owners: &mut Vec<crate::handle::Handle>,
