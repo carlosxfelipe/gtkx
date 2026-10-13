@@ -34,7 +34,9 @@ type ElementNode = SignalTarget & {
     props: Props;
     children: PlaceableNode[];
     placements: Map<string, PlacedChild[]>;
+    externalChildren: Set<AnyNode>;
     ownedClasses: Set<string>;
+    behaviorProps: Set<string>;
     parent: ParentNode | null;
     content: ContentChild[];
     contentKind: ContentKind | null;
@@ -45,7 +47,7 @@ type PropNode = {
     kind: typeof PROP_KIND;
     slot: string;
     children: PlaceableNode[];
-    parent: ElementNode | null;
+    parent: ElementNode | LazyNode | null;
 };
 
 type LazyNode = {
@@ -58,6 +60,8 @@ type LazyNode = {
     handlers: Map<string, HandlerRecord>;
     dispatch: Dispatch;
     adoptionListeners: Set<() => void>;
+    propChildren: Set<PropNode>;
+    propertyHost: ElementNode | null;
 };
 
 type TextNode = {
@@ -95,6 +99,8 @@ const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): Laz
     handlers: new Map(),
     dispatch,
     adoptionListeners: new Set(),
+    propChildren: new Set(),
+    propertyHost: null,
 });
 
 const createElementNode = (
@@ -110,7 +116,9 @@ const createElementNode = (
     children: [],
     handlers: new Map(),
     placements: new Map(),
+    externalChildren: new Set(),
     ownedClasses: new Set(),
+    behaviorProps: new Set(),
     parent: null,
     content: [],
     contentKind,

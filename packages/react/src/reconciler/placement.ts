@@ -2,10 +2,11 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps } from "./apply-props.js";
+import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
 import { typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
+    createElementNode,
     ELEMENT_KIND,
     type ElementNode,
     LAZY_KIND,
@@ -42,12 +43,18 @@ const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
 const siblingAt = (entries: PlacedChild[], index: number): GObject.Object | null =>
     index > 0 ? (entries[index - 1]?.object ?? null) : null;
 
-const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | null): PlaceInfo => ({
+const placeInfo = (
+    parent: ElementNode,
+    entry: PlacedChild,
+    index: number,
+    sibling: GObject.Object | null,
+): PlaceInfo => ({
     slot: entry.slot,
     index,
     sibling,
     adopted: entry.adopted,
     props: entry.node.props,
+    children: (parent.placements.get(entry.slot) ?? []).map((child) => child.object),
 });
 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
@@ -79,7 +86,21 @@ const replaceAdopted = (node: LazyNode, object: GObject.Object | null): void => 
         disconnectAllHandlers(lazyTarget(node, node.adopted));
     }
 
+    if (node.propertyHost !== null) {
+        teardownPlacements(node.propertyHost);
+        discardAccessible(node.propertyHost);
+    }
+
     node.adopted = object;
+    node.propertyHost = object === null ? null : createElementNode(node.typeName, object, node.dispatch, null);
+
+    if (node.propertyHost !== null) {
+        for (const prop of node.propChildren) {
+            for (const child of prop.children) {
+                placeChild(node.propertyHost, prop.slot, child, null);
+            }
+        }
+    }
 };
 
 const notifyAdoption = (node: LazyNode): void => {
@@ -108,6 +129,7 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
 const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
     applyWrite(entry.slot, () => {
         Reflect.set(parent.object, entry.slot, value);
+        markDependentPropsDirty(parent);
     });
 };
 
@@ -124,7 +146,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
         return false;
     }
 
-    const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling));
+    const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.parent, ctx.entry, ctx.index, ctx.sibling));
 
     if (claim === undefined) {
         return false;
@@ -231,7 +253,9 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index)));
+    const claim = applyMutation(() =>
+        reorder(parent.object, entry.object, placeInfo(parent, entry, index, siblingAt(entries, index))),
+    );
     adoptedFrom(parent, entry, behavior, claim);
     applyLazyProps(entry);
 };
@@ -295,13 +319,21 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
 };
 
 const teardownPlacements = (parent: ElementNode): void => {
-    for (const entries of parent.placements.values()) {
+    for (const [slot, entries] of parent.placements) {
+        const retained: PlacedChild[] = [];
         for (const entry of entries) {
-            detachEntry(parent, entry, 0);
+            if (parent.externalChildren.has(entry.node)) {
+                retained.push(entry);
+            } else {
+                detachEntry(parent, entry, 0);
+            }
+        }
+        if (retained.length === 0) {
+            parent.placements.delete(slot);
+        } else {
+            parent.placements.set(slot, retained);
         }
     }
-
-    parent.placements.clear();
 };
 
 export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };

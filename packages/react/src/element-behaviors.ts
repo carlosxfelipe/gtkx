@@ -6,11 +6,16 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,
     AlertDialogResponse,
+    AboutDialogLink,
+    AboutDialogSection,
+    AboutDialogLegalSection,
+    AboutDialogOtherApp,
     CreditSection,
     DragSourceIcon,
     LevelBarOffset,
     MainOption,
     ScaleMark,
+    TabExtraDropTarget,
 } from "./prop-types.js";
 import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "@gtkx/config/elements";
 import {
@@ -28,7 +33,14 @@ import {
     slot,
     value,
 } from "./reconciler/behaviors.js";
-import { type ElementBehavior, type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
+import {
+    type ElementBehavior,
+    type ElementConfig,
+    type PlaceInfo,
+    forTypes,
+    registerElements,
+} from "./reconciler/registry.js";
+import { applyWrite } from "./reconciler/signals.js";
 
 type AdwChildSetter =
     | Adw.Bin
@@ -68,6 +80,66 @@ const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children",
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
 const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
+const tabExtraDropTarget = value<Adw.TabBar | Adw.TabOverview, TabExtraDropTarget | null>(
+    "extraDropTarget",
+    (tabs, target) => tabs.setupExtraDropTarget(target?.actions ?? 0, target?.types ?? null),
+    null,
+);
+
+/**
+ * GTK 4.22 updates the label widget's mnemonic mode without refreshing the check button's
+ * accessible label. Reassigning the existing label refreshes that native accessibility property.
+ * https://github.com/GNOME/gtk/blob/4.22.4/gtk/gtkcheckbutton.c#L1161
+ */
+const checkButtonUnderline = value<Gtk.CheckButton, boolean>(
+    "useUnderline",
+    (button, useUnderline) => {
+        button.setUseUnderline(useUnderline);
+        const label = button.getLabel();
+        if (label !== null) {
+            applyWrite("label", () => button.setLabel(label));
+        }
+    },
+    false,
+);
+
+const tabViewParent = (child: Gtk.Widget): Adw.TabView | null => {
+    for (let parent = child.getParent(); parent !== null; parent = parent.getParent()) {
+        if (parent instanceof Adw.TabView) {
+            return parent;
+        }
+    }
+
+    return null;
+};
+
+const tabInsertionPosition = (view: Adw.TabView, info: PlaceInfo): number => {
+    const successor = info.children
+        .slice(info.index + 1)
+        .find(
+            (child) => child instanceof Gtk.Widget && tabViewParent(child) === view && !view.getPage(child).getPinned(),
+        );
+
+    return successor instanceof Gtk.Widget ? view.getPagePosition(view.getPage(successor)) : view.getNPages();
+};
+
+const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[]): void => {
+    const pages = children
+        .filter((child): child is Gtk.Widget => child instanceof Gtk.Widget && tabViewParent(child) === view)
+        .map((child) => view.getPage(child));
+    const ordered = [...pages.filter((page) => page.getPinned()), ...pages.filter((page) => !page.getPinned())];
+    const known = new Set(pages);
+    const positions = Array.from({ length: view.getNPages() }, (_, index) => index).filter((index) =>
+        known.has(view.getNthPage(index)),
+    );
+
+    for (const [index, position] of positions.entries()) {
+        const page = ordered[index];
+        if (page !== undefined && view.getPagePosition(page) !== position) {
+            view.reorderPage(page, position);
+        }
+    }
+};
 
 const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
     attach: (view, child, info) => {
@@ -146,8 +218,22 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkWindow: {
         behaviors: [childSetterSlot()],
     },
+    GtkMenuButton: {
+        behaviors: [
+            setterSlot<Gtk.MenuButton, Gtk.Popover>("children", Gtk.Popover, "setPopover"),
+            childSetterSlot<Gtk.MenuButton>(),
+        ],
+    },
+    GtkCheckButton: {
+        behaviors: [checkButtonUnderline, childSetterSlot<Gtk.CheckButton>()],
+    },
     GtkWidget: {
         behaviors: [
+            value<Gtk.Widget, Gtk.TextDirection | null>(
+                "textDirection",
+                (widget, direction) => widget.setDirection(direction ?? Gtk.TextDirection.NONE),
+                Gtk.TextDirection.NONE,
+            ),
             {
                 update: () => [TEXT_CHILD_ANCHOR_PROP],
             },
@@ -213,6 +299,18 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             {
                 create: (props) => Gtk.CallbackAction.new(props.callback as Gtk.ShortcutFunc),
+            },
+        ],
+    },
+    GtkCustomLayout: {
+        behaviors: [
+            {
+                create: (props) =>
+                    Gtk.CustomLayout.new(
+                        (props.requestMode as Gtk.CustomRequestModeFunc | null) ?? null,
+                        props.measure as Gtk.CustomMeasureFunc,
+                        props.allocate as Gtk.CustomAllocateFunc,
+                    ),
             },
         ],
     },
@@ -398,6 +496,46 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             }),
         ],
     },
+    AdwAboutDialog: {
+        behaviors: [
+            list<Adw.AboutDialog, AboutDialogLink>("links", {
+                add: (dialog, link) => dialog.addLink(link.title, link.url),
+            }),
+            list<Adw.AboutDialog, AboutDialogSection>("creditSections", {
+                add: (dialog, section) => dialog.addCreditSection(section.name ?? null, section.people),
+            }),
+            list<Adw.AboutDialog, AboutDialogSection>("acknowledgementSections", {
+                add: (dialog, section) => dialog.addAcknowledgementSection(section.name ?? null, section.people),
+            }),
+            list<Adw.AboutDialog, AboutDialogLegalSection>("legalSections", {
+                add: (dialog, section) =>
+                    dialog.addLegalSection(
+                        section.title,
+                        section.copyright ?? null,
+                        section.licenseType,
+                        section.license ?? null,
+                    ),
+            }),
+            list<Adw.AboutDialog, AboutDialogOtherApp>("otherApps", {
+                add: (dialog, app) => dialog.addOtherApp(app.appid, app.name, app.summary),
+            }),
+        ],
+    },
+    AdwTabBar: {
+        behaviors: [tabExtraDropTarget],
+    },
+    AdwTabOverview: {
+        behaviors: [childSetterSlot<Adw.TabOverview>(), tabExtraDropTarget],
+    },
+    AdwTabPage: {
+        behaviors: [
+            value<Adw.TabPage, boolean>(
+                "pinned",
+                (page, pinned) => tabViewParent(page.getChild())?.setPagePinned(page, pinned),
+                false,
+            ),
+        ],
+    },
     GtkScale: {
         behaviors: [
             list<Gtk.Scale, ScaleMark>("marks", {
@@ -554,18 +692,24 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwTabView: {
         behaviors: [
             slot<Adw.TabView, Gtk.Widget>("children", Gtk.Widget, {
-                attach: (view, child, info) => view.insert(child, info.index),
+                attach: (view, child, info) =>
+                    info.props.parent instanceof Adw.TabPage
+                        ? view.addPage(child, info.props.parent)
+                        : view.insert(child, tabInsertionPosition(view, info)),
                 reorder: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) {
-                        view.reorderPage(info.adopted, info.index);
+                    reorderTabPages(view, info.children);
+
+                    return info.adopted;
+                },
+                detach: (_view, child, info) => {
+                    const owner = tabViewParent(child);
+
+                    if (info.adopted instanceof Adw.TabPage && owner !== null) {
+                        owner.setPagePinned(info.adopted, false);
+                        owner.closePage(info.adopted);
                     }
                 },
-                detach: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) {
-                        view.closePage(info.adopted);
-                    }
-                },
-                resolve: (view, child) => view.getPage(child),
+                resolve: (_view, child) => tabViewParent(child)?.getPage(child) ?? null,
             }),
         ],
     },
