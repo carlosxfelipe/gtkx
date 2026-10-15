@@ -1,11 +1,16 @@
+import { cleanupDirectoryIdentity, isProcessAlive, readProcessIdentity, resolveExecutable } from "@gtkx/utils";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
-    isProcessAlive,
-    resolveExecutable,
-    spawnWithParentDeathSignal,
-    spawnWithParentDeathSupervisor,
-} from "@gtkx/utils";
-import { type ChildProcess, spawnSync } from "node:child_process";
-import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
+    chmodSync,
+    closeSync,
+    existsSync,
+    mkdtempSync,
+    openSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+    writeSync,
+} from "node:fs";
 import { connect, Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,9 +18,11 @@ import {
     createBusConfig,
     createHeadlessRuntimeMarker,
     createSwayConfig,
+    HEADLESS_HELPER_ENV,
     HEADLESS_RUNTIME_MARKER,
 } from "./headless-config.ts";
 import { startNotificationService } from "./notification-service.ts";
+import { type HeadlessRuntime, stopHeadlessRuntime } from "./reap-headless-displays.ts";
 import { startVirtualSeat } from "./virtual-seat.ts";
 
 /**
@@ -102,9 +109,10 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
 
             writeFileSync(configPath, createSwayConfig(width, height));
 
-            return spawnWithParentDeathSupervisor("sway", ["-c", configPath], {
+            return spawn(resolveExecutable("sway"), ["-c", configPath], {
+                detached: true,
                 stdio: ["ignore", "ignore", "pipe"],
-                cleanupDirectory: runtimeDir,
+                env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
             });
         },
     },
@@ -112,9 +120,9 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
         socket: "wayland-0",
         requiresVirtualSeat: false,
         env: {},
-        start: (_runtimeDir, width, height) =>
-            spawnWithParentDeathSignal(
-                "weston",
+        start: (runtimeDir, width, height) =>
+            spawn(
+                resolveExecutable("weston"),
                 [
                     "--backend=headless",
                     "--renderer=pixman",
@@ -123,7 +131,11 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                     `--height=${height}`,
                     "--socket=wayland-0",
                 ],
-                { stdio: ["ignore", "ignore", "pipe"], cleanupDirectories: [_runtimeDir] },
+                {
+                    detached: true,
+                    stdio: ["ignore", "ignore", "pipe"],
+                    env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
+                },
             ),
     },
 };
@@ -498,32 +510,37 @@ const makeTeardown = (stops: (() => void)[]): (() => void) => {
 };
 
 const makeRemoveRuntime =
-    (env: EnvSnapshot, runtimeDir: string): (() => void) =>
+    (env: EnvSnapshot, runtime: HeadlessRuntime): (() => void) =>
     (): void => {
         restoreEnv(env);
-        rmSync(runtimeDir, { recursive: true, force: true });
+        stopHeadlessRuntime(runtime);
     };
 
 const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
     const busConfigPath = join(runtimeDir, "session.conf");
     writeBusConfig(busConfigPath, busSocketPath);
 
-    return spawnWithParentDeathSignal("dbus-daemon", [`--config-file=${busConfigPath}`], {
+    return spawn(resolveExecutable("dbus-daemon"), [`--config-file=${busConfigPath}`], {
+        detached: true,
         stdio: ["ignore", "ignore", "pipe"],
-        cleanupDirectories: [runtimeDir],
+        env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
     });
 };
 
-const createHeadlessRuntimeDirectory = (): string => {
+const createHeadlessRuntime = (): HeadlessRuntime => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
 
     try {
         chmodSync(runtimeDir, 0o700);
+        const owner = readProcessIdentity(process.pid);
+        if (owner === undefined) throw new Error("Cannot identify the headless display owner");
+        const cleanupDirectory = cleanupDirectoryIdentity(runtimeDir);
+        if (cleanupDirectory === undefined) throw new Error("Cannot identify the headless runtime directory");
         const markerPath = join(runtimeDir, HEADLESS_RUNTIME_MARKER);
-        writeFileSync(markerPath, createHeadlessRuntimeMarker(runtimeDir), { flag: "wx", mode: 0o600 });
+        writeFileSync(markerPath, createHeadlessRuntimeMarker(runtimeDir, owner), { flag: "wx", mode: 0o600 });
         chmodSync(markerPath, 0o600);
 
-        return runtimeDir;
+        return { cleanupDirectory, owner, helpers: [] };
     } catch (error) {
         rmSync(runtimeDir, { recursive: true, force: true });
         throw error;
@@ -532,24 +549,35 @@ const createHeadlessRuntimeDirectory = (): string => {
 
 const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const env: EnvSnapshot = {};
-    const runtimeDir = createHeadlessRuntimeDirectory();
+    const runtime = createHeadlessRuntime();
+    const runtimeDir = runtime.cleanupDirectory.path;
     const spawned: ChildProcess[] = [];
     const monitorStops: (() => void)[] = [];
-    const removeRuntime = makeRemoveRuntime(env, runtimeDir);
+    const removeRuntime = makeRemoveRuntime(env, runtime);
+    const recordChild = (child: ChildProcess): void => {
+        spawned.push(child);
+        child.unref();
+        const identity = child.pid === undefined ? undefined : readProcessIdentity(child.pid);
+        if (identity === undefined) return;
+        runtime.helpers.push(identity);
+        const pending = join(runtimeDir, `${HEADLESS_RUNTIME_MARKER}.tmp`);
+        writeFileSync(pending, createHeadlessRuntimeMarker(runtimeDir, runtime.owner, runtime.helpers), {
+            mode: 0o600,
+        });
+        renameSync(pending, join(runtimeDir, HEADLESS_RUNTIME_MARKER));
+    };
 
     try {
         applyEnv(env, STATIC_HEADLESS_ENV);
         applyEnv(env, { XDG_RUNTIME_DIR: runtimeDir });
         const busSocketPath = join(runtimeDir, "bus");
         const busChild = startBus(runtimeDir, busSocketPath);
-        busChild.unref();
-        spawned.push(busChild);
+        recordChild(busChild);
         const busMonitor = monitorChild(busChild, "D-Bus session bus", busSocketPath);
         monitorStops.push(busMonitor.stop);
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
         const compositor = startCompositor(runtimeDir, options, env);
-        compositor.child.unref();
-        spawned.push(compositor.child);
+        recordChild(compositor.child);
         const compositorSocketPath = join(runtimeDir, compositor.socket);
         const compositorMonitor = monitorChild(compositor.child, "Compositor", compositorSocketPath);
         monitorStops.push(compositorMonitor.stop);
@@ -565,17 +593,15 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         return makeTeardown([
             stopExitWatch,
             capturedStderr.stop,
-            () => {
-                killSpawned(spawned);
-            },
             stopVirtualSeat,
             stopNotifications,
             removeRuntime,
+            () => killSpawned(spawned),
         ]);
     } catch (error) {
         runCleanups(monitorStops);
-        killSpawned(spawned);
         removeRuntime();
+        killSpawned(spawned);
         throw error;
     }
 };
