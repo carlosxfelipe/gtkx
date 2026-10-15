@@ -1,17 +1,13 @@
 export {
     alloc,
-    bindField,
+    bindFunction,
     call,
-    compileCall,
-    compileVfuncSlot,
+    compileDescriptor,
     copy,
-    createCallback,
-    createClosure,
+    createFunction,
     createMatchSubject,
-    createFunctionResolver,
     createRecordConverter,
     createReferenceStorage,
-    createTypeResolver,
     emitSignal,
     getFundamentalIdentity,
     getMatchInfoBase,
@@ -23,13 +19,11 @@ export {
     init,
     installLogSink,
     logSubscriptionFence,
-    keepAlive,
     newObject,
     openLibrary,
     ownMatchInfo,
     quit,
     readField,
-    readVfuncSlot,
     registerClass,
     resolveSymbol,
     setObjectProperty,
@@ -41,19 +35,20 @@ export {
 export type {
     ArrayKind,
     CallbackFailure,
+    CallbackOptions,
     CallbackScope,
-    CallSignature,
     CallLayout,
     CallOutput,
     CallResult,
+    CompiledDescriptor,
     DecodedCallback,
     Descriptor,
     DestroyNotifyKind,
     ElementOwnership,
     ExternalObject,
-    FieldDescriptor,
     FundamentalIdentity,
-    FunctionResolver,
+    FunctionOptions,
+    FunctionSignature,
     Handle,
     LibraryHandle,
     Ownership,
@@ -65,9 +60,7 @@ export type {
     RegisterClassInterface,
     RegisterClassOptions,
     RegisterClassVfunc,
-    TypeResolver,
-    VfuncSlot,
-    VfuncSlotOptions,
+    TypeClassOptions,
 } from "./index.js";
 
 declare module "./index.js" {
@@ -77,26 +70,16 @@ declare module "./index.js" {
      * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
-    /** An ABI signature compiled independently of its executable target. */
-    export type CallSignature = { _opaque: "CallSignature" };
+    /** A validated native value codec reusable across fields, pointer values, and function signatures. */
+    export type CompiledDescriptor = { _opaque: "CompiledDescriptor" };
+    /** A compiled ABI signature and marshalling plan shared by calls and callback trampolines. */
+    export type FunctionSignature = { _opaque: "FunctionSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */
     export type LibraryHandle = { _opaque: "LibraryHandle" };
-    /** A validated vtable position whose implementation is acquired when read. */
-    export type VfuncSlot = { _opaque: "VfuncSlot" };
-    /** An environment-bound lazy GType resolver that retries unregistered types. */
-    export type TypeResolver = { _opaque: "TypeResolver" };
-    /** An environment-bound lazy resolver for a permanent native lifecycle function. */
-    export type FunctionResolver = { _opaque: "FunctionResolver" };
     /** A native record copy strategy with lazily resolved lifecycle operations. */
     export type RecordConverter = { _opaque: "RecordConverter" };
     /** An owned reference seed prepared for one argument of a compiled call signature. */
     export type ReferenceStorage = { _opaque: "ReferenceStorage" };
-    /**
-     * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to
-     * `readField` and `writeField`. It captures the marshalling of the field's bytes; the byte
-     * offset the field sits at within its owner's memory is given on every access.
-     */
-    export type FieldDescriptor = { _opaque: "FieldDescriptor" };
     export type Ref = { value: unknown };
     export type CallbackFailure = { nativeError: ExternalObject<Handle>; thrown: unknown };
 }

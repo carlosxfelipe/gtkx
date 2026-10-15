@@ -1,8 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import {
     alloc,
-    bindField,
-    createFunctionResolver,
+    compileDescriptor,
     type Descriptor,
     type ExternalObject,
     type Handle,
@@ -41,21 +40,21 @@ test.each(["read", "write", "pointer"])(
             isCallerAllocated: false,
             isInline: false,
             isValueSafe: false,
-            refResolver: createFunctionResolver(() => {
+            refResolver: () => {
                 if (failing) {
                     throw failure;
                 }
                 return resolveOperation("g_variant_ref");
-            }),
-            unrefResolver: createFunctionResolver(() => resolveOperation("g_variant_unref")),
+            },
+            unrefResolver: () => resolveOperation("g_variant_unref"),
             unrefLabel: "g_variant_unref",
         };
-        const field = bindField(descriptor);
+        const field = compileDescriptor(descriptor);
         const source = newVariant(42);
         const value = new GObject.Value();
         value.init(GObject.typeFromName("gpointer"));
         const slot = alloc(8);
-        writeField(bindField({ kind: "buffer" }), slot, 0, source);
+        writeField(compileDescriptor({ kind: "buffer" }), slot, 0, source);
         const invoke = (): unknown => {
             switch (operation) {
                 case "read":
@@ -63,7 +62,7 @@ test.each(["read", "write", "pointer"])(
                 case "write":
                     return writeField(field, slot, 0, source);
                 default:
-                    setValuePointer(getHandle(value), descriptor, source);
+                    setValuePointer(getHandle(value), field, source);
                     return source;
             }
         };

@@ -1,6 +1,6 @@
 import {
     alloc,
-    bindField,
+    type CompiledDescriptor,
     type Descriptor,
     type ExternalObject,
     type Handle,
@@ -30,25 +30,28 @@ const scalarSizes: Partial<Record<Descriptor["kind"], number>> = {
 
 const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarSizes[descriptor.kind] !== undefined;
 
-const compileOutputStorage = (descriptor: Descriptor): OutputStorage | undefined => {
+const compileOutputStorage = (
+    descriptor: Descriptor,
+    compiled: () => ExternalObject<CompiledDescriptor>,
+): OutputStorage | undefined => {
     const size = scalarSizes[descriptor.kind];
     if (size === undefined) {
         return undefined;
     }
-    const field = bindField(descriptor);
+    const storageDescriptor = compiled();
 
     return {
         allocate(value) {
             const handle = alloc(size);
             if (value != null) {
-                writeField(field, handle, 0, value);
+                writeField(storageDescriptor, handle, 0, value);
             }
 
             return handle;
         },
-        read: (handle) => readField(field, handle, 0),
+        read: (handle) => readField(storageDescriptor, handle, 0),
         write: (handle, value) => {
-            writeField(field, handle, 0, value);
+            writeField(storageDescriptor, handle, 0, value);
         },
     };
 };

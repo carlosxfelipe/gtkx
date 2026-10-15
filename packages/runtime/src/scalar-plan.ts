@@ -2,14 +2,17 @@ import {
     type ExternalObject,
     getTypeClass,
     type Handle,
+    type CompiledDescriptor,
+    compileDescriptor as compileNativeDescriptor,
     bind as nativeBind,
-    bindField,
+    bindFunction,
     call as nativeCall,
     type Descriptor as NativeDescriptor,
     readField,
     type Ref,
 } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
+import { callLayout } from "./call-layout.js";
 import { functionResolver, typeResolver } from "./descriptor-lifecycle.js";
 import { cairoPathConverter } from "./foreign-record.js";
 import { numericPlan } from "./numeric-plan.js";
@@ -26,7 +29,7 @@ import {
 } from "./output-storage.js";
 
 type Conversion = (value: unknown) => unknown;
-type ScalarPlan = {
+type PlanDefinition = {
     abi: NativeDescriptor;
     encode: Conversion;
     decode: Conversion;
@@ -34,6 +37,8 @@ type ScalarPlan = {
     storage?: OutputStorage;
     referenceStorage?: ReferencePlan;
 };
+type ScalarPlan = PlanDefinition & { readonly compiled: ExternalObject<CompiledDescriptor> };
+type DescriptorPlans = { args: ScalarPlan[]; returns: ScalarPlan };
 type Callback = (...args: unknown[]) => unknown;
 type CallbackShape = {
     argDescriptors: Descriptor[];
@@ -68,7 +73,7 @@ const defaultAbiReturn = (descriptor: NativeDescriptor): unknown => {
     return null;
 };
 
-const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): ScalarPlan => ({
+const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): PlanDefinition => ({
     abi: toAbi({ ...descriptor, kind: "bytes" }),
     encode(value) {
         if (value == null) {
@@ -111,19 +116,26 @@ const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     if (cached !== undefined) {
         return cached;
     }
-    const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], typeT, { argOrder: [] });
-    const type = nativeCall(typeCall, []).value as bigint;
-    const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [typeT], typeT, { argOrder: [0] });
-    const nameCall = nativeBind(LIB, "g_type_name", [typeT], toAbi({ kind: "bytes", ownership: "borrowed" }), {
-        argOrder: [0],
-    });
+    const type = compileNativeDescriptor(typeT);
+    const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], type, { argOrder: [] });
+    const gtype = nativeCall(typeCall, []).value as bigint;
+    const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [type], type, { argOrder: [0] });
+    const nameCall = nativeBind(
+        LIB,
+        "g_type_name",
+        [type],
+        compileDescriptor({ kind: "bytes", ownership: "borrowed" }).compiled,
+        {
+            argOrder: [0],
+        },
+    );
     const fundamentalName = decoder.decode(
-        nativeCall(nameCall, [nativeCall(fundamentalCall, [type]).value]).value as Uint8Array,
+        nativeCall(nameCall, [nativeCall(fundamentalCall, [gtype]).value]).value as Uint8Array,
     );
     if (fundamentalName !== (descriptor.kind === "enum" ? "GEnum" : "GFlags")) {
         throw new TypeError(`Expected a registered ${descriptor.kind} type`);
     }
-    const handle = getTypeClass(type);
+    const handle = getTypeClass(gtype);
     library.set(key, handle);
 
     return handle;
@@ -143,17 +155,19 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
     }
     const handle = enumClass(descriptor);
     if (descriptor.kind === "flags") {
-        const mask = readField(bindField(unsignedT), handle, 8) as number;
+        const mask = readField(compileNativeDescriptor(unsignedT), handle, 8) as number;
 
         return (value) => (value & mask) >>> 0 === value >>> 0;
     }
-    const pointer = toAbi(pointerT);
-    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointer, integerT], pointer, { argOrder: [0, 1] });
+    const pointer = compileDescriptor(pointerT).compiled;
+    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointer, compileNativeDescriptor(integerT)], pointer, {
+        argOrder: [0, 1],
+    });
 
     return (value) => nativeCall(valueCall, [handle, value]).value !== null;
 };
 
-const enumPlan = (descriptor: EnumDescriptor): ScalarPlan => {
+const enumPlan = (descriptor: EnumDescriptor): PlanDefinition => {
     const abi = descriptor.isSigned ? integerT : unsignedT;
     const minimum = descriptor.isSigned ? -0x80_00_00_00 : 0;
     const maximum = descriptor.isSigned ? 0x7f_ff_ff_ff : 0xff_ff_ff_ff;
@@ -244,7 +258,7 @@ const arrayEncoder = (descriptor: Extract<Descriptor, { kind: "array" }>, encode
     };
 };
 
-const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
+const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): PlanDefinition => {
     const item = compileDescriptor(descriptor.itemDescriptor);
     const { preserveNull = false, ...layout } = descriptor;
     const shouldUseByteTransport = hasByteTransport(descriptor, item.abi);
@@ -278,9 +292,9 @@ const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPl
     };
 };
 
-const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): ScalarPlan => {
+const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): PlanDefinition => {
     const inner = compileDescriptor(descriptor.innerDescriptor);
-    const storage = compileOutputStorage(inner.abi);
+    const storage = compileOutputStorage(inner.abi, () => inner.compiled);
     const abi = { ...descriptor, innerDescriptor: inner.abi, inout: descriptor.inout ?? false };
 
     if (storage === undefined) {
@@ -338,11 +352,13 @@ const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: u
     }
 };
 
-const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
-    const args = shape.argDescriptors
-        .filter((_, index) => index !== shape.userDataIndex)
-        .map((descriptor) => compileDescriptor(descriptor));
-    const result = compileDescriptor(shape.returnDescriptor);
+const adaptCallback = (
+    shape: CallbackShape,
+    callback: Callback,
+    plans: DescriptorPlans = compileDescriptors(shape.argDescriptors, shape.returnDescriptor),
+): Callback => {
+    const args = plans.args.filter((_, index) => index !== shape.userDataIndex);
+    const result = plans.returns;
 
     const invoke: Callback = (...values) => {
         const decoded = args.map((plan, index) => plan.decode(values[index]));
@@ -375,7 +391,7 @@ const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
     };
 };
 
-const encodeCallback = (descriptor: CallbackShape, value: unknown): unknown => {
+const encodeCallback = (descriptor: CallbackShape, plans: DescriptorPlans, value: unknown): unknown => {
     if (value == null) {
         return value;
     }
@@ -383,7 +399,7 @@ const encodeCallback = (descriptor: CallbackShape, value: unknown): unknown => {
         throw new TypeError("Expected a callback function");
     }
 
-    return adaptCallback(descriptor, value as Callback);
+    return adaptCallback(descriptor, value as Callback, plans);
 };
 
 type NestedDescriptor = Extract<Descriptor, { kind: "array" | "hashtable" | "ref" | "callback" }>;
@@ -412,7 +428,7 @@ const callbackScope = (
     return descriptor.hasUserData === true ? "call" : "forever";
 };
 
-const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
+const nestedPlan = (descriptor: NestedDescriptor): PlanDefinition => {
     switch (descriptor.kind) {
         case "array": {
             return arrayPlan(descriptor);
@@ -434,6 +450,7 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
             return referencePlan(descriptor);
         }
         case "callback": {
+            const plans = compileDescriptors(descriptor.argDescriptors, descriptor.returnDescriptor);
             return {
                 abi: {
                     kind: "callback",
@@ -441,23 +458,31 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
                     hasDestroy: descriptor.hasDestroy ?? false,
                     destroyKind: descriptor.destroyKind ?? "destroyNotify",
                     hasUserData: descriptor.hasUserData ?? false,
-                    ...(descriptor.userDataIndex === undefined ? {} : { userDataIndex: descriptor.userDataIndex }),
-                    canThrow: descriptor.canThrow ?? false,
                     releaseWithCompletion:
                         descriptor.scope === "notified" &&
                         descriptor.hasDestroy !== true &&
                         descriptor.hasUserData === true,
-                    argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
-                    returnDescriptor: toAbi(descriptor.returnDescriptor),
+                    signature: bindFunction(
+                        plans.args.map((argument) => argument.compiled),
+                        plans.returns.compiled,
+                        "callback",
+                        callLayout(descriptor.argDescriptors),
+                        {
+                            canThrow: descriptor.canThrow ?? false,
+                            ...(descriptor.userDataIndex === undefined
+                                ? {}
+                                : { userDataIndex: descriptor.userDataIndex }),
+                        },
+                    ),
                 },
-                encode: (value) => encodeCallback(descriptor, value),
+                encode: (value) => encodeCallback(descriptor, plans, value),
                 decode: identity,
             };
         }
     }
 };
 
-const booleanPlan: ScalarPlan = {
+const booleanPlan: PlanDefinition = {
     abi: integerT,
     encode(value) {
         if (typeof value !== "boolean") {
@@ -469,9 +494,9 @@ const booleanPlan: ScalarPlan = {
     decode: (value) => value !== 0,
 };
 
-const indirectPlan = (descriptor: Extract<Descriptor, { kind: "indirect" }>): ScalarPlan => {
+const indirectPlan = (descriptor: Extract<Descriptor, { kind: "indirect" }>): PlanDefinition => {
     const inner = compileDescriptor(descriptor.innerDescriptor);
-    if (compileOutputStorage(inner.abi) === undefined) {
+    if (!isScalarStorageDescriptor(inner.abi)) {
         throw new TypeError("An indirect descriptor requires a scalar value");
     }
     return {
@@ -487,7 +512,7 @@ const indirectPlan = (descriptor: Extract<Descriptor, { kind: "indirect" }>): Sc
     };
 };
 
-const pointerValuePlan = (descriptor: Extract<Descriptor, { kind: "pointerValue" }>): ScalarPlan => {
+const pointerValuePlan = (descriptor: Extract<Descriptor, { kind: "pointerValue" }>): PlanDefinition => {
     const inner = compileDescriptor(descriptor.innerDescriptor);
     const widths: Partial<Record<NativeDescriptor["kind"], number>> = {
         int8: 8,
@@ -522,7 +547,7 @@ const pointerValuePlan = (descriptor: Extract<Descriptor, { kind: "pointerValue"
     };
 };
 
-const buildPlan = (descriptor: Descriptor): ScalarPlan => {
+const buildPlan = (descriptor: Descriptor): PlanDefinition => {
     switch (descriptor.kind) {
         case "indirect":
             return indirectPlan(descriptor);
@@ -659,7 +684,14 @@ const compileDescriptor = (descriptor: Descriptor): ScalarPlan => {
     }
     compilingDescriptors.add(descriptor);
     try {
-        return buildPlan(descriptor);
+        const plan = buildPlan(descriptor);
+        let compiled: ExternalObject<CompiledDescriptor> | undefined;
+        return {
+            ...plan,
+            get compiled() {
+                return (compiled ??= compileNativeDescriptor(plan.abi));
+            },
+        };
     } finally {
         compilingDescriptors.delete(descriptor);
     }
@@ -667,4 +699,10 @@ const compileDescriptor = (descriptor: Descriptor): ScalarPlan => {
 
 const toAbi = (descriptor: Descriptor): NativeDescriptor => compileDescriptor(descriptor).abi;
 
-export { adaptCallback, compileDescriptor, signalDefaultReturn, toAbi };
+const compileDescriptors = (args: Descriptor[], returns: Descriptor): DescriptorPlans => ({
+    args: args.map((descriptor) => compileDescriptor(descriptor)),
+    returns: compileDescriptor(returns),
+});
+
+export { adaptCallback, compileDescriptor, compileDescriptors, signalDefaultReturn, toAbi };
+export type { DescriptorPlans };
