@@ -5,7 +5,7 @@ description: "Prepare, review, tag, and publish a GTKX release, and recover an i
 
 # Publishing Releases
 
-This runbook is for maintainers. Contributors record package changes with [version plans](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#add-a-version-plan).
+This runbook is for maintainers. Contributors record user-facing changes with [version plans](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#add-a-version-plan). Plans describe public APIs, application behavior, and developer workflows. Omit private implementation changes, including changes to `@gtkx/native` that have no observable effect on applications.
 
 ## Prepare a release
 
@@ -17,11 +17,11 @@ gh workflow run release.yml
 
 Release preparation runs only on request and never writes to `main`. The same workflow tags prepared releases after main CI succeeds.
 
-| Inputs            | Result                                                                                                                                                                                                   |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Both empty        | Consume pending plans on the current release train: the next beta during beta development, or the bump requested by plans on a stable train. With no pending plans, stop without opening a pull request. |
-| `specifier=2.0.0` | End the beta and prepare the stable release, even without pending plans.                                                                                                                                 |
-| `preid=rc`        | Change the prerelease identifier, even without pending plans.                                                                                                                                            |
+| Inputs            | Result                                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Both empty        | Consume pending plans. For stable versions, apply the requested bump; for prereleases, increment the existing prerelease version. With no pending plans, stop without opening a pull request. |
+| `specifier=2.0.0` | Prepare version 2.0.0, even without pending plans.                                                                                                                                            |
+| `preid=rc`        | Change the prerelease identifier, even without pending plans.                                                                                                                                 |
 
 The workflow versions all packages, updates tutorial ranges and the documentation version, prepends release notes to `CHANGELOG.md`, and deletes consumed plans. It opens or refreshes `release/next` as the release bot, with a GitHub-signed commit. Preview those preparation steps locally without writing files:
 
@@ -41,7 +41,7 @@ Repository merge rules enforce review approval, the `Verify workspace` check, an
 
 ## Tag and publish
 
-Successful completion of main CI starts the tag job in Release PR. It requires that commit to be the merge of `release/next` and recognizes a prepared release from the version's changelog entry and release state. It creates the annotated `vX.Y.Z` tag and draft GitHub release, then dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
+Successful completion of main CI starts the tag job in the Release workflow. It requires that commit to be the merge of `release/next` and recognizes a prepared release from the version's changelog entry and release state. It creates the annotated `vX.Y.Z` tag and draft GitHub release, then dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
 
 To curate the draft notes:
 
@@ -67,4 +67,4 @@ If an existing version has a missing or incorrect channel tag, the retry fails r
 
 If the GitHub release was published but the Website dispatch failed, rerun only the failed `publish-release` job. It recognizes the already-published release and retries the Website dispatch without changing the immutable release. Starting a new full Publish run still requires a draft.
 
-The registry visibility timeout is ten minutes per package. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS` overrides it for `pnpm release` or the publish scripts. It must be a positive integer in milliseconds; invalid values fail before upload. Beta 5 took three to four minutes to become visible.
+The registry visibility timeout is ten minutes per package. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS` overrides it for `pnpm release` or the publish scripts. It must be a positive integer in milliseconds; invalid values fail before upload.

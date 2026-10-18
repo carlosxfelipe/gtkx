@@ -1,5 +1,5 @@
 ---
-description: "Reorder tasks by pointer or keyboard where the complete manual list is visible."
+description: "Change the persisted manual order with drag and drop or keyboard shortcuts."
 ---
 
 # Reorder Tasks
@@ -8,7 +8,7 @@ description: "Reorder tasks by pointer or keyboard where the complete manual lis
 
 ## Add the reorder action
 
-Each task already has a `position`. Add one action to `src/store/tasks.ts` that moves a task to another task's index and rewrites those positions:
+Each task already has a `position`. Add an action to `src/store/tasks.ts` that moves a task to another task's index and updates the positions:
 
 ```diff [src/store/tasks.ts]
 @@ -14,0 +15 @@
@@ -29,9 +29,9 @@ Each task already has a `position`. Add one action to `src/store/tasks.ts` that 
 
 Callers validate the IDs at their input boundary, so the action can use them directly. The store's existing persistence writes the new positions to disk.
 
-## Limit reordering to the complete manual list
+## Enable reordering in manual views {#limit-reordering-to-the-complete-manual-list}
 
-A displayed order can be edited only when the screen contains the complete ordered set. Title and date sorts derive their order, while search, Open/Done filtering, and Trash show subsets that do not have an unambiguous insertion point.
+Reordering changes the global manual order, including when you move tasks within a list, Today, or Important. Disable it for derived sorts, search results, Open/Done filters, and Trash so those views keep their displayed order.
 
 Add the shared decision to `src/store/selectors.ts`:
 
@@ -71,11 +71,11 @@ Compute it once in `src/components/task-list.tsx`, then give each row its neighb
 +                                />
 ```
 
-The neighboring IDs give the keyboard command the same destinations a pointer drop receives.
+The neighboring IDs let keyboard and pointer interactions use the same reorder action.
 
 ## Add the row controllers
 
-GTKX attaches generated controller elements through a widget's `controllers` prop. The pointer path uses GTK4's drag source and drop target; the keyboard path uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
+GTKX attaches generated controller elements through a widget's `controllers` prop. Drag and drop uses GTK4's drag source and drop target; keyboard reordering uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
 
 Update the imports and props in `src/components/task-row.tsx`:
 
@@ -203,7 +203,7 @@ When reordering is unavailable, the row has none of these controllers and expose
 
 Choose Manual sorting and the All filter, clear the search box, and focus a task. Press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>; the row moves one position. Dragging it onto another row changes the same persisted order.
 
-Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each partial or derived view. Return to Manual with All selected and an empty search to reorder again.
+Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each of those views. Return to Manual with All selected and an empty search to reorder again.
 
 ## Next
 

@@ -5,8 +5,8 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  The React framework for Linux<br />
-  Build native apps with React, TypeScript, and Adwaita widgets.
+  A React framework for native Linux applications<br />
+  Adwaita and GTK4 widgets, TypeScript, and Node.js.
 </p>
 
 <p align="center">
@@ -28,17 +28,15 @@
 
 ## Start an app
 
-This branch develops **GTKX 2.0**, currently in beta. The stable release is scheduled for **1 December 2026**. For the current stable release, use the [1.x documentation](https://gtkx.dev/guide/getting-started).
-
-You need Linux, Node.js 26.7 or later, GTK 4.20 or later, libadwaita 1.8 or later, and the native development libraries. Follow [Getting Started](https://gtkx.dev/v2/guide/getting-started) to install and check them before scaffolding:
+GTKX 2.0 requires Linux, Node.js 26.7 or later, GTK 4.20 or later, libadwaita 1.8 or later, and native development libraries. Follow [Getting Started](https://gtkx.dev/v2/guide/getting-started) to install and check them before scaffolding:
 
 ```sh
-npm create gtkx@beta my-app
+npm create gtkx@2 my-app
 cd my-app
 npm run dev
 ```
 
-The native addon ships prebuilt for x64 and arm64 glibc Linux. Other targets require building it from the repository with Rust.
+The native addon ships prebuilt for x64 and arm64 glibc Linux. Building it from source requires Rust and the [workspace prerequisites](https://gtkx.dev/contributing/development).
 
 ## Build with React
 
@@ -67,7 +65,7 @@ const App = () => (
 createRoot().render(<App />);
 ```
 
-The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configured native libraries. They are local to the app, not installed from npm.
+The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configured native libraries. These generated packages live in your app’s `node_modules`.
 
 ## Learn GTKX
 

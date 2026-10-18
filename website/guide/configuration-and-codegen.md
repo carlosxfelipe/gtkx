@@ -20,7 +20,7 @@ export default defineConfig({
 });
 ```
 
-GTKX 1.x includes `Gtk-4.0` by default. Enabling `v2DefaultLibraries` also includes `Adw-1`, providing the Adwaita foundation used throughout these guides. List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`.
+GTKX 1.x includes `Gtk-4.0` by default. Enabling `v2DefaultLibraries` also includes `Adw-1`, providing the Adwaita widgets used throughout these guides. List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`.
 
 `defineConfig` provides editor completion. The CLI validates the configuration when it loads it. The application ID is required and uses a reverse-DNS name such as `com.example.Tasks`.
 
@@ -40,7 +40,7 @@ Run generation after installing dependencies or changing the configured librarie
 gtkx codegen
 ```
 
-GTKX generates real modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
+GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -50,7 +50,7 @@ import { AdwHeaderBar } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 ```
 
-The stable release also supports importing elements from the bare `@gtkx/jsx` entry point. Prefer namespace imports when preparing for 2.0, which removes that entry point. Use [`@gtkx/cairo`](/guide/cairo) for Cairo; the stable `@gtkx/gi/cairo` compatibility export is also removed in 2.0.
+GTKX 1.6 also supports importing elements from the bare `@gtkx/jsx` entry point. Prefer namespace imports when preparing for 2.0, which removes that entry point. Use [`@gtkx/cairo`](/guide/cairo) for Cairo; the 1.6 `@gtkx/gi/cairo` compatibility export is also removed in 2.0.
 
 `codegen: false` reuses an installed binding store. Leave generation enabled for an ordinary application so its bindings stay aligned with its configuration.
 
@@ -71,23 +71,25 @@ Prefer JSX for object creation and child placement. The [generated element refer
 GTKX accepts a registered class wherever a binding takes a GType:
 
 ```ts
-import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
-const store = Gio.ListStore.new(Gtk.Label);
+const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 ```
 
-Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
+Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. GTypes returned by bindings or passed to signal handlers remain `bigint` values.
 
 ## Passing a GValue
 
-When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly:
+When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly. For example, a `GtkDragSource` can use this `onPrepare` handler:
 
 ```ts
 import * as Gdk from "@gtkx/gi/gdk";
 
-const provider = Gdk.ContentProvider.newForValue("Copied text");
+const prepareDrag = () => Gdk.ContentProvider.newForValue("Copied text");
 ```
+
+`onPrepare` must return its provider synchronously, so this native callback creates it directly. Create persistent GObjects through JSX.
 
 Use an explicitly initialized `GObject.Value` when the operation requires a particular native type, including an interface type for clipboard or drag-and-drop matching. A binding that fills a value instead takes a new, uninitialized `GObject.Value`; its generated signature identifies this case. Signal handlers continue to receive the value object.
 
@@ -97,15 +99,15 @@ For nullable value parameters, `null` means no value object. To represent a type
 
 GTKX 1.6 lets you adopt the 2.0 behavior one change at a time. Enable a flag, regenerate, typecheck, and run the app and its tests before moving to the next one. Typechecking catches many changes, but cannot identify every behavioral difference, such as how a typed array is serialized.
 
-| Flag                 | Change to prepare for                                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `v2ByteArrays`       | Returned byte sequences become `Uint8Array`. Inputs continue to accept `number[]` too. Update array mutation and serialization code.                               |
-| `v2ValueReturns`     | Returned `GObject.Value` objects become their payloads, typed as `unknown`. Handle the payload type at the call site.                                              |
-| `v2FinishResults`    | Promisified operations omit a redundant success boolean when failure already rejects. Update tuple destructuring; see [Async Operations](/guide/async-operations). |
-| `v2InoutReturns`     | Inout records and boxed values are updated in place without being repeated in the return value. Primitive inout results remain.                                    |
-| `v2ResourceImports`  | Asset imports use relative paths and explicit queries. See the example below.                                                                                      |
-| `v2DefaultLibraries` | Adwaita becomes a default dependency. Install its GIR data and run the app to check its appearance.                                                                |
-| `v2TreeShaking`      | Production builds drop unused generated classes. Import any class whose registration the app needs at runtime.                                                     |
+| Flag                 | Change to prepare for                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v2ByteArrays`       | Returned byte sequences become `Uint8Array`. Inputs continue to accept `number[]` too. Update array mutation and serialization code.                                   |
+| `v2ValueReturns`     | Returned `GObject.Value` objects become their payloads, typed as `unknown`. Handle the payload type at the call site.                                                  |
+| `v2FinishResults`    | Promisified operations drop a redundant leading success boolean from multi-value results. Update tuple destructuring; see [Async Operations](/guide/async-operations). |
+| `v2InoutReturns`     | Inout records and boxed values are updated in place without being repeated in the return value. Primitive inout results remain.                                        |
+| `v2ResourceImports`  | Asset imports use relative paths and explicit queries. See the example below.                                                                                          |
+| `v2DefaultLibraries` | Adwaita becomes a default dependency. Install its GIR data and run the app to check its appearance.                                                                    |
+| `v2TreeShaking`      | Production builds drop unused generated classes. Import any class whose registration the app needs at runtime.                                                         |
 
 ### Migrating resource imports
 

@@ -1,5 +1,5 @@
 ---
-description: "Build Tasks, a Linux task manager, one running step at a time, and ship it as a Flatpak."
+description: "Build a Linux task manager with React and Adwaita, then test, translate, and package it."
 ---
 
 # Build a Tasks App with GTKX
@@ -9,9 +9,9 @@ description: "Build Tasks, a Linux task manager, one running step at a time, and
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-Build **Tasks**, a Linux task manager, from an empty directory to localized Flatpak, deb, rpm, and AppImage packages. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
+Build **Tasks**, a Linux task manager, from an empty directory, then test, translate, and package it as a Flatpak, deb, rpm, and AppImage. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
 
-Each chapter ends with a running app and a check of the feature you added.
+Each chapter keeps the app runnable and includes checks for the feature you added.
 
 The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK4. You need Linux, the native development libraries, and Node.js 24 or later; [Getting Started](/guide/getting-started) covers installation.
 
@@ -52,15 +52,22 @@ cd tasks
 npm run dev
 ```
 
-This opens the stable initializer's small GTK counter. The next chapter enables Adwaita and replaces it with the standard Adwaita application shell used for the rest of the tutorial.
+This opens the GTKX 1.6 counter example. The next chapter enables Adwaita and replaces the counter with the Tasks application shell.
 
 Leave `npm run dev` running as you work. Fast Refresh applies component edits to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts` regenerates bindings and relaunches it too.
 
 ## How this tutorial works
 
-Follow the chapters in order. Each adds a feature and ends with a **Run it** section to check the result in the running app.
+Follow the chapters in order. Use each chapter's checks to confirm the result in the running app.
 
-Examples name the file to edit. A complete-file example replaces that file. A `diff` block shows removed lines with `-` and added lines with `+`; apply its changes to the existing file. An `append` block adds declarations at the end, and a JSON `merge` block updates the named fields. Keep the surrounding code unless instructed otherwise. Run `npm run typecheck` after each chapter and `npm test` once Add Tasks introduces the suite.
+| Stage                  | Chapters                                                                                                   | What you build                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Foundation             | [Create a Window](/tutorial/your-first-window) through [Save Tasks](/tutorial/saving-to-disk)              | A task list with controls and persistent storage             |
+| Navigation and editing | [Add Lists and a Sidebar](/tutorial/lists-and-the-sidebar) through [Edit Tasks](/tutorial/the-task-editor) | An adaptive layout, search, and task editor                  |
+| Desktop features       | [Add Menus and Shortcuts](/tutorial/actions-menus-shortcuts) through [Send Reminders](/tutorial/reminders) | Actions, dialogs, preferences, reordering, and notifications |
+| Test and distribute    | [Test the App](/tutorial/testing) through [Prepare for Flathub](/tutorial/flatpak)                         | Integration tests, translations, and installable packages    |
+
+Examples name the file to edit. A complete-file example replaces that file. A `diff` block shows removed lines with `-` and added lines with `+`; apply its changes to the existing file. A JSON `merge` block updates the named fields. Keep the surrounding code unless instructed otherwise. Run `npm run typecheck` after each chapter and `npm test` once Add Tasks introduces the suite.
 
 After the **Run it** checks pass, save a commit in your project so you can review the next chapter's changes with `git diff` or return to a working state. Keep the lockfile with that commit.
 

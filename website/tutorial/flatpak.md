@@ -21,7 +21,7 @@ flatpak install --user --reinstall build/out/com.gtkx.tutorial-1.0.0-x86_64.flat
 flatpak run --env=LANG=fr_FR.UTF-8 --env=LANGUAGE=fr --env=LC_ALL=fr_FR.UTF-8 com.gtkx.tutorial
 ```
 
-Use the artifact matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
+Use the package matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
 
 ## Check storage and reminders
 
@@ -51,7 +51,7 @@ After testing the prebuilt package, update `gtkx.config.ts` for source mode:
 
 Use your application's public repository URL. Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) using its installation instructions; GTKX uses it to prepare the offline dependency sources.
 
-Commit the configuration, application sources, lockfile, icons, license, and translation catalogs. Generated MO files stay out of Git; the build reproduces them. Then generate the manifest:
+Commit the configuration, application sources, lockfile, icons, license, and translation catalogs, then push that commit to the configured repository. The source build must be able to fetch it. Generated MO files stay out of Git; the build reproduces them. Then generate the manifest:
 
 ```bash
 npm run deploy -- --target flatpak --print-manifests

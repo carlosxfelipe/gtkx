@@ -29,7 +29,7 @@ The full workspace needs more system libraries than a minimal application:
 | Headless examples and tests       | A supported compositor, normally Sway, `dbus-daemon`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
 | Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers.         |
 
-GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI setup action](https://github.com/gtkx-org/gtkx/blob/main/.github/actions/setup-ci/action.yml) installs the complete verification environment on Ubuntu 26.04, including packaging tools and fonts.
+GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. The full workspace needs GTK 4.22 and libadwaita 1.9 for the GTK and Adwaita demos. Distribution package names and available versions vary. The [CI setup action](https://github.com/gtkx-org/gtkx/blob/main/.github/actions/setup-ci/action.yml) installs the complete verification environment on Ubuntu 26.04, including packaging tools and fonts.
 
 On Debian or Ubuntu releases providing those library versions, the development packages include:
 
@@ -58,7 +58,7 @@ pnpm build
 
 `pnpm install` links workspace dependencies, prepares the generated binding aliases, and builds the Vitest plugin's TypeScript output through the root postinstall script. `pnpm build` runs Nx's build targets with their dependencies. This includes the native addon, generated bindings, TypeScript libraries, application bundles, and website build where those targets exist.
 
-The first full build is substantial: native compilation, OpenGL generation, and website API references all participate. Building references for a pinned documentation version may also need network access to retrieve that release's source and dependencies.
+The first full build compiles native code, generates OpenGL bindings, and generates the website API references. Building references for a pinned documentation version may also need network access to retrieve that release's source and dependencies.
 
 For subsequent work, use the target for the package you are changing:
 
@@ -73,13 +73,15 @@ pnpm nx show projects
 pnpm nx show project @gtkx/react
 ```
 
-Use `pnpm format` to apply Oxfmt to hand-written JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. CI checks the same files as part of linting. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
+Use `pnpm format` to apply Oxfmt to handwritten JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. CI checks the same files as part of linting. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
 
 The formatter preserves import and package manifest ordering. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded. Embedded code formatting is disabled so tutorial code fences and their patches remain unchanged. Rust formatting uses the pinned nightly rustfmt described below.
 
-CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
+## CI environment
 
-The `verify` job coordinates build, test, typecheck, lint, and React and native E2E tasks through Nx Cloud. Three or four managed Nx Agents run the tasks, according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `.github/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
+CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of the `e2e` target. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
+
+The `verify` job coordinates build, test, typecheck, lint, and React and native integration tasks through Nx Cloud. Managed Nx Agents distribute tasks according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `.github/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
 
 The `image` job creates the versioned GHCR image from `.nx/workflows/agents.yaml` if it does not exist, then resolves its digest for the coordinator. Published image tags are never overwritten. Bump the image version in `agents.yaml` whenever the Dockerfile, its Node or Go pins, the root package manager pin, or either Rust toolchain changes. Bump it also when refreshing distribution packages. Agent initialization restores dependency downloads and Rust build artifacts, then installs workspace dependencies.
 
@@ -91,7 +93,7 @@ Typed Oxlint and scoped ESLint checks depend on built package declarations. Thei
 
 Nx's standard TypeScript, Oxlint, ESLint, and Vitest plugins infer package targets. Other project commands run directly and declare their dependencies and cache outputs in `project.json`.
 
-The native sanitizer task runs as an E2E dependency. The live Rust advisory audit always refreshes advisories. When Nx Cloud is enabled, CI records the audit, requests fixes for failures, and closes the run after checks finish, including after failures. Publication, Pages deployment, and release management remain in their own GitHub Actions workflows.
+The native sanitizer task runs as a dependency of the `e2e` target. The Rust advisory audit refreshes advisories on every run. When Nx Cloud is enabled, CI records the audit, requests fixes for failures, and closes the run after checks finish, including after failures. Publication, Pages deployment, and release management remain in their own GitHub Actions workflows.
 
 ## Generated bindings
 
@@ -109,7 +111,7 @@ For only the root bindings, TypeScript declarations, and widget reference:
 pnpm nx run gtkx:codegen
 ```
 
-The `bindings` target runs the compiled generator with the normal root config. Its dependencies are limited to the generator, config, utilities, runtime, and native bridge; renderer metadata lives in the config package so React does not need to build first. Packages that consume generated bindings depend on this target explicitly. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
+The `bindings` target runs the compiled generator with `gtkx.config.base.ts`. Its dependencies are limited to the generator, config, utilities, runtime, and native bridge; renderer metadata lives in the config package so React does not need to build first. Packages that consume generated bindings depend on this target explicitly. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
 `pnpm codegen` bypasses Nx task-result caching so explicit regeneration also refreshes the generated blocks in `AGENTS.md` and `CLAUDE.md`. These files can contain developer-owned instructions and are never restored from a shared cache. Dependency builds use cached binding and reference outputs during ordinary CI tasks.
 
@@ -133,7 +135,7 @@ pnpm nx run adwaita-demo:dev
 pnpm nx run storybook-example:dev
 ```
 
-Run these separately as needed. The development target builds dependencies, generates the example's bindings, and starts the CLI. Changes to application components participate in Fast Refresh. When editing framework packages, rebuild the affected package and restart the example as needed so it loads the changed output.
+Run these separately as needed. The development target builds dependencies, refreshes generated declarations, and starts the CLI. Changes to application components participate in Fast Refresh. When editing framework packages, rebuild the affected package and restart the example as needed so it loads the changed output.
 
 After the initial dependency build, the example's local CLI can also start a headless session:
 
@@ -182,4 +184,4 @@ The working-tree API pages are generated from public source entrypoints after bu
 
 Add coverage in the suite that owns the behavior, then rely on CI's `Verify workspace` check. [Testing](/contributing/testing) describes coverage ownership and how to reproduce a failing target. A manual dispatch of the normal CI workflow runs the complete workspace graph.
 
-Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.
+Changes to public APIs, application behavior, or developer workflows use an Nx version plan created by `pnpm plan`. Documentation, repository tests, and private implementation changes do not need release notes. `@gtkx/native` is private implementation even though it is published; describe any application-facing fixes without listing its internal APIs. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

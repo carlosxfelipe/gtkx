@@ -7,7 +7,7 @@ description: "Awaiting promisified GIO calls, canceling them, and keeping long w
 
 GTKX turns compatible GIO async/finish pairs into promises. By default in GTKX 1.6, `loadContentsAsync` resolves to the native success flag, a numeric byte array, and the optional etag. A failed call rejects, so callers can skip the success flag when destructuring. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
 
-The [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) removes only the redundant success flag. The separate `v2ByteArrays` flag changes the contents to a `Uint8Array`. With both enabled, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to its etag directly. Explicit finish methods keep their native return shape.
+The [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) removes only the redundant success flag. The separate `v2ByteArrays` flag changes the contents to a `Uint8Array`. With both enabled, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to its etag directly. Boolean-only results and explicit finish methods keep their native return shape.
 
 ## Awaiting async operations
 
@@ -98,7 +98,7 @@ const worker = new Worker(new URL("./indexer.ts", import.meta.url));
 worker.on("message", (rows) => setRows(rows));
 ```
 
-The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
+Use a relative path naming the worker source file, and put `new URL(...)` directly inside `new Worker(...)`. `gtkx build` rejects other forms.
 
 During `gtkx dev` and Vitest, Node loads the worker and its imports directly rather than from a bundle. Relative imports in that graph must therefore name their `.ts` source files and use syntax supported by Node's type stripping; enums and parameter properties are not available. The 1.6 scaffold uses `NodeNext` with `noEmit`, so add `"allowImportingTsExtensions": true` to `compilerOptions` before importing those source files. `gtkx build` bundles the graph and can accept code that native dev or test loading cannot, so exercise each worker in Vitest as well as building it.
 

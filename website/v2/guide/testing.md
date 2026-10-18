@@ -5,14 +5,14 @@ description: "Test GTKX components with native widgets, accessible queries, and 
 
 # Testing
 
-`@gtkx/testing` renders real GTKX components and provides queries, interactions, and assertions for their native widgets. Its API follows React Testing Library conventions.
+`@gtkx/testing` renders GTKX components and provides queries, interactions, and assertions for native widgets. Its API follows React Testing Library conventions.
 
 ## Setup
 
-Projects created with `npm create gtkx@beta` can include testing setup. To add it to an existing project, install the test dependencies:
+Projects created with `npm create gtkx@2` can include testing setup. To add it to an existing project, install the test dependencies:
 
 ```bash
-npm install -D @gtkx/testing@beta vitest
+npm install -D @gtkx/testing@2 vitest
 ```
 
 Add a `test` script that runs `vitest run`, and create `vitest.config.ts`:
@@ -42,9 +42,9 @@ command -v sway dbus-daemon
 npm test
 ```
 
-This setup was checked in the Fedora 44 environment described in [Getting Started](/v2/guide/getting-started#native-libraries-on-fedora-44). See the [plugin reference](/v2/reference/@gtkx/vitest/) for display size and compositor options.
+See the [plugin reference](/v2/reference/@gtkx/vitest/) for display size and compositor options.
 
-Importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
+With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
 The private session bus contains GTKX's minimal notifications service. Other desktop services, such as portals and keyrings, are absent; provide any D-Bus services the component under test needs on that bus.
 
@@ -81,7 +81,7 @@ it("saves the display name", async () => {
 });
 ```
 
-Ordinary components render inside a harness window. An application component that creates its own window needs `rootElement` instead:
+Components render inside a test window by default. An application component that creates its own window needs `rootElement` instead:
 
 ```tsx
 import { rootElement } from "@gtkx/react";
@@ -89,7 +89,7 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-`rootElement` expects a tree that creates a toplevel window; omit `container` for loose widgets or fragments. Use the `wrapper` option for context providers. `rerender` updates the rendered component; `unmount` removes it. Animations are disabled by default, and automatic cleanup removes rendered trees between tests. For hooks, use `renderHook` and assert on `result.current`.
+`rootElement` expects a tree that creates a toplevel window; omit `container` for components without their own window. Use the `wrapper` option for context providers. `rerender` updates the rendered component; `unmount` removes it. Animations are disabled by default, and automatic cleanup removes rendered trees between tests. For hooks, use `renderHook` and assert on `result.current`.
 
 ## Finding widgets
 
@@ -112,11 +112,11 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
-Use `slide(range, value)` for a slider. `drag` drives authored drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
+Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 
 Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a `GtkDropTarget`. Use `drop(target, content)` when testing how a target handles a supplied value.
 
-`fireEvent(object, signalName, ...args)` emits a GObject signal directly. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
+`fireEvent(object, signalName, ...args)` emits a GObject signal directly. Await its promise so the resulting React updates finish before asserting. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 
 For asynchronous assertions, use `waitFor`; for a widget leaving the tree, use `waitForElementToBeRemoved`. Their timeout defaults to one second and can be changed per call or through `configure`.
 
